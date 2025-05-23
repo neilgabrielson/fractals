@@ -12,3 +12,15 @@ body {
 canvas {
     border: 2px solid black;
 }
+
+.canvas-container {
+    position: relative;
+    display: inline-block;
+}
+
+#mandelbrot-overlay, #julia-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    pointer-events: none; /* Let clicks pass through to main canvas */
+}

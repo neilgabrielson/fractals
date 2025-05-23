@@ -7,8 +7,14 @@
     <body>
         <h1>Fractals</h1>
         <div class="fractal-container">
-            <canvas id="mandelbrot" width="400" height="400"></canvas>
-            <canvas id="julia" width="400" height="400"></canvas>
+            <div class="canvas-container">
+                <canvas id="mandelbrot" width="400" height="400"></canvas>
+                <canvas id="mandelbrot-overlay" width="400" height="400"></canvas>
+            </div>
+            <div class="canvas-container">
+                <canvas id="julia" width="400" height="400"></canvas>
+                <canvas id="julia-overlay" width="400" height="400"></canvas>
+            </div>
         </div>
         <script src="script.js"></script>
     </body>
