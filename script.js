@@ -1,7 +1,6 @@
 // script.js
 
 const resolution = 400;
-const max_iterations = 200;
 
 const mandelbrot_canvas = document.getElementById('mandelbrot');
 const julia_canvas = document.getElementById('julia');
@@ -79,6 +78,7 @@ var z_value = [0,0];
 var c_value = [0,0];
 
 var current_fractal = 'standard';
+var max_iterations = 100;
 
 // define escape time function
 function escape_time(z, c) {
@@ -200,6 +200,10 @@ function reset() {
 function update_fractal_type() {
     current_fractal = document.getElementById('fractal_type').value;
     reset();
+}
+
+function update_escape_time() {
+    max_iterations = document.getElementById('escape_time').value;
 }
 
 function iterate_z() {
