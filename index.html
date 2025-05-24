@@ -21,6 +21,14 @@
             <p>z = <input id="z_rl"/> + <input id="z_im"/>i</p>
             <button onclick="update()">Update</button>
             <button onclick="iterate_z()">Iterate</button>
+            <button onclick="reset()">Reset</button>
+            <br/>
+            <select id="fractal_type" onchange="update_fractal_type()">
+                <option value="standard">Standard</option>
+                <option value="cubic">Cubic</option>
+                <option value="hyperbolic">Hyperbolic</option>
+                <option value="burning_ship">Burning Ship</option>
+            </select>
         </div>
         <script src="script.js"></script>
     </body>
