@@ -42,12 +42,12 @@ function escape_time(z, c) {
 // define pixel to complex cordinate function
 const value = (point, domain) => [
     point[0] / resolution * (domain[0][1]-domain[0][0]) + domain[0][0],
-    -(point[1] / resolution * (domain[1][1]-domain[1][0]) + domain[1][0])
+    point[1] / resolution * (domain[1][1]-domain[1][0]) + domain[1][0]
 ];
 
 const to_pixel = (point, domain) => [
     (point[0]-domain[0][0]) / (domain[0][1]-domain[0][0]) * resolution,
-    (-point[1]-domain[1][0]) / (domain[1][1]-domain[1][0]) * resolution
+    (point[1]-domain[1][0]) / (domain[1][1]-domain[1][0]) * resolution
 ];
 
 // draw pointer
@@ -103,6 +103,7 @@ function plot_mandelbrot(canvas=mandelbrot_canvas, domain=mandelbrot_domain) {
 }
 
 function plot_julia() {
+    console.log(julia_domain);
     const ctx = julia_canvas.getContext("2d");
     const imageData = ctx.createImageData(resolution, resolution);
     for (let x = 0; x < resolution; x++) {
@@ -139,16 +140,16 @@ draw_pointers();
 
 mandelbrot_canvas.addEventListener('click', (event) => {
     const rect = mandelbrot_canvas.getBoundingClientRect();
-    const p = [event.clientX - rect.left, event.clientY - rect.top];
-    c_value = value(p,mandelbrot_domain);
+    const point = [event.clientX - rect.left, event.clientY - rect.top];
+    c_value = value(point,mandelbrot_domain);
     plot_julia();
     draw_pointers();
 });
 
 julia_canvas.addEventListener('click', (event) => {
     const rect = julia_canvas.getBoundingClientRect();
-    const p = [event.clientX - rect.left, event.clientY - rect.top];
-    z_value = value(p,julia_domain)
+    const point = [event.clientX - rect.left, event.clientY - rect.top];
+    z_value = value(point,julia_domain)
     draw_pointers();
 });
 
