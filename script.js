@@ -1,50 +1,61 @@
 // script.js
 
 const resolution = 400;
-const iterations = 500;
+const max_iterations = 100;
 
-const mandelbrotCanvas = document.getElementById('mandelbrot');
-const juliaCanvas = document.getElementById('julia');
+const mandelbrot_canvas = document.getElementById('mandelbrot');
+const julia_canvas = document.getElementById('julia');
 
-const mandelbrotOverlay = document.getElementById('mandelbrot-overlay');
-const juliaOverlay = document.getElementById('julia-overlay');
+const mandelbrot_overlay = document.getElementById('mandelbrot-overlay');
+const julia_overlay = document.getElementById('julia-overlay');
 
-mandelbrotCanvas.width = resolution;
-mandelbrotCanvas.height = resolution;
-mandelbrotOverlay.width = resolution;
-mandelbrotOverlay.height = resolution;
-juliaCanvas.width = resolution;
-juliaCanvas.height = resolution;
-juliaOverlay.width = resolution;
-juliaOverlay.height = resolution;
+mandelbrot_canvas.width = resolution;
+mandelbrot_canvas.height = resolution;
+mandelbrot_overlay.width = resolution;
+mandelbrot_overlay.height = resolution;
+julia_canvas.width = resolution;
+julia_canvas.height = resolution;
+julia_overlay.width = resolution;
+julia_overlay.height = resolution;
 
+// define fc and norm squared fucntions
 const fc = (z, c) => [z[0]**2-z[1]**2+c[0], 2*z[0]*z[1]+c[1]];
 const norm_sq = z => z[0]**2 + z[1]**2;
 
-var mandelbrotDomain = [[-2,2],[-2,2]]
+// set initial domains
+var mandelbrot_domain = [[-2,2],[-2,2]]
+var julia_domain = [[-2,2],[-2,2]]
 
+// set z and c values
+var z_value = [0,0];
+var c_value = [0,0];
+
+// define escape time function
 function escape_time(z, c) {
-    for (let n = 1; n < iterations; n++) {
+    for (let n = 1; n < max_iterations; n++) {
         z = fc(z,c);
         if (norm_sq(z) >= 4) return n;
     }
     return 0;
 }
 
-const to_coord = (p, domain, canvas) => [
-    p[0] / canvas.width * (domain[0][1]-domain[0][0]) + domain[0][0],
-    p[1] / canvas.height * (domain[1][1]-domain[1][0]) + domain[1][0]
+// define pixel to complex cordinate function
+const value = (point, domain) => [
+    point[0] / resolution * (domain[0][1]-domain[0][0]) + domain[0][0],
+    point[1] / resolution * (domain[1][1]-domain[1][0]) + domain[1][0]
 ];
 
-const to_pixel = (z, domain, canvas) => [
-    (z[0]-domain[0][0]) / (domain[0][1]-domain[0][0]) * canvas.width,
-    (z[1]-domain[1][0]) / (domain[1][1]-domain[1][0]) * canvas.height
+const to_pixel = (point, domain) => [
+    (point[0]-domain[0][0]) / (domain[0][1]-domain[0][0]) * resolution,
+    (point[1]-domain[1][0]) / (domain[1][1]-domain[1][0]) * resolution
 ];
 
-function drawPointer(canvas, coords, color='red',size=8) {
+// draw pointer
+function draw_pointer(point, canvas, domain, color='red',size=8) {
     const ctx = canvas.getContext('2d');
+    const coords = to_pixel(point, domain);
     ctx.clearRect(0,0,canvas.width,canvas.height);
-    // Draw crosshair
+    // initialize
     ctx.strokeStyle = color;
     ctx.lineWidth = 2;
     ctx.beginPath();
@@ -57,26 +68,28 @@ function drawPointer(canvas, coords, color='red',size=8) {
     ctx.stroke();
 }
 
-drawPointer(mandelbrotOverlay, [100,100])
+function draw_pointers() {
+    draw_pointer(c_value, mandelbrot_overlay, mandelbrot_domain);
+    draw_pointer(z_value, julia_overlay, julia_domain);
+    console.log("c = " + c_value[0] + " + " +  c_value[1] + "i");
+    console.log("z = " + z_value[0] + " + " +  z_value[1] + "i");
+}
 
 function colormap(x) {
     x *= 255;
     return [x,x,255-x]
 }
 
-function plot_mandelbrot(canvas, domain) {
+function plot_mandelbrot(canvas=mandelbrot_canvas, domain=mandelbrot_domain) {
     const ctx = canvas.getContext("2d");
     const imageData = ctx.createImageData(canvas.width, canvas.height);
     for (let x = 0; x < resolution; x++) {
         for (let y = 0; y < resolution; y++) {
-            const it = escape_time(
+            const iterations = escape_time(
                 [0,0],
-                [
-                    x / resolution * (domain[0][1]-domain[0][0]) + domain[0][0],
-                    y / resolution * (domain[1][1]-domain[1][0]) + domain[1][0]
-                ]
+                value([x,y],domain)
             );
-            const color = it === 0 ? [0,0,0] : colormap(it/100);
+            const color = iterations === 0 ? [0,0,0] : colormap(iterations/max_iterations);
             const index = (y * canvas.width + x) * 4;
             imageData.data[index] = color[0];
             imageData.data[index + 1] = color[1];
@@ -87,22 +100,16 @@ function plot_mandelbrot(canvas, domain) {
     ctx.putImageData(imageData, 0, 0);
 }
 
-function plot_julia(canvas, domain, z) {
+function plot_julia(canvas=julia_canvas, domain=julia_domain, c=c_value) {
     const ctx = canvas.getContext("2d");
     const imageData = ctx.createImageData(canvas.width, canvas.height);
     for (let x = 0; x < resolution; x++) {
         for (let y = 0; y < resolution; y++) {
-            const it = escape_time(
-                [
-                    x / resolution * (domain[0][1]-domain[0][0]) + domain[0][0],
-                    y / resolution * (domain[1][1]-domain[1][0]) + domain[1][0]
-                ],
-                [
-                    z[0],
-                    z[1]
-                ]
+            const iterations = escape_time(
+                value([x,y],domain),
+                c
             );
-            const color = it === 0 ? [0,0,0] : colormap(it/100);
+            const color = iterations === 0 ? [0,0,0] : colormap(iterations/max_iterations);
             const index = (y * canvas.width + x) * 4;
             imageData.data[index] = color[0];
             imageData.data[index + 1] = color[1];
@@ -113,45 +120,65 @@ function plot_julia(canvas, domain, z) {
     ctx.putImageData(imageData, 0, 0);
 }
 
-const scale = (domain, factor, p) => 
+const scale = (domain, factor, p) => [
     [
-        [
-            p[0] - (domain[0][1] - domain[0][0]) * factor / 2,
-            p[0] + (domain[0][1] - domain[0][0]) * factor / 2
-        ],
-        [
-            p[1] - (domain[1][1] - domain[1][0]) * factor / 2,
-            p[1] + (domain[1][1] - domain[1][0]) * factor / 2
-        ]
-    ];
+        p[0] - (domain[0][1] - domain[0][0]) * factor / 2,
+        p[0] + (domain[0][1] - domain[0][0]) * factor / 2
+    ],
+    [
+        p[1] - (domain[1][1] - domain[1][0]) * factor / 2,
+        p[1] + (domain[1][1] - domain[1][0]) * factor / 2
+    ]
+];
 
-plot_mandelbrot(mandelbrotCanvas, mandelbrotDomain);
-drawPointer(mandelbrotOverlay, to_pixel([0,0], mandelbrotDomain, mandelbrotOverlay));
-plot_julia(juliaCanvas, mandelbrotDomain, [0,0]);
+plot_mandelbrot();
+plot_julia();
+draw_pointers();
 
-mandelbrotCanvas.addEventListener('click', (event) => {
-    const rect = mandelbrotCanvas.getBoundingClientRect();
-    const pixelX = event.clientX - rect.left;
-    const pixelY = event.clientY - rect.top;
-    plot_julia(juliaCanvas, mandelbrotDomain, to_coord([pixelX,pixelY],mandelbrotDomain,juliaCanvas));
-    drawPointer(mandelbrotOverlay, [pixelX,pixelY])
+mandelbrot_canvas.addEventListener('click', (event) => {
+    const rect = mandelbrot_canvas.getBoundingClientRect();
+    const p = [event.clientX - rect.left, event.clientY - rect.top];
+    c_value = value(p,mandelbrot_domain)
+    plot_julia();
+    draw_pointers();
 });
 
-juliaCanvas.addEventListener('click', (event) => {
-    const rect = juliaCanvas.getBoundingClientRect();
-    const pixelX = event.clientX - rect.left;
-    const pixelY = event.clientY - rect.top;
-    drawPointer(juliaOverlay, [pixelX,pixelY])
+julia_canvas.addEventListener('click', (event) => {
+    const rect = julia_canvas.getBoundingClientRect();
+    const p = [event.clientX - rect.left, event.clientY - rect.top];
+    z_value = value(p,julia_domain)
+    draw_pointers();
 });
 
 document.addEventListener('keydown', (event) => {
     switch(event.key) {
         case 'r':
-            mandelbrotDomain = [[-2, 2], [-2, 2]];
-            plot_mandelbrot(mandelbrotCanvas, mandelbrotDomain);
+            mandelbrot_domain = [[-2, 2], [-2, 2]];
+            julia_domain = [[-2, 2], [-2, 2]];
+            c_value = [0,0];
+            z_value = [0,0];
+            plot_julia();
+            plot_mandelbrot();
+            draw_pointers();
             break;   
+        case 'c':
+            c_value = [prompt("real"),prompt("imaginary")];
+            plot_julia();
+            draw_pointers();
+            break;
+        case 'z':
+            mandelbrot_domain = scale(mandelbrot_domain,0.5,c_value);
+            plot_mandelbrot();
+            draw_pointers();
+            break;
+        case 'x':
+            mandelbrot_domain = scale(mandelbrot_domain,2,c_value);
+            plot_mandelbrot();
+            draw_pointers();
+            break;
         case 'i':
-            console.log('i');
+            z_value = fc(z_value,c_value);
+            draw_pointers();
             break;
     }
 });
