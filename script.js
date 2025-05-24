@@ -280,16 +280,17 @@ function iterate() {
 
 let intervalId = null;
 
-document.getElementById("iteration_toggle").addEventListener('click', function () {
+function toggle_iteration() {
+    btn = document.getElementById("iteration_toggle");
     if (intervalId===null) {
         intervalId = setInterval(iterate, play_speed);
-        this.innerHTML = "Pause";
+        btn.innerHTML = "Pause";
     } else {
         clearInterval(intervalId);
         intervalId = null;
-        this.innerHTML = "Play"
+        btn.innerHTML = "Play"
     }
-});
+}
 
 const scale = (domain, factor, p) => [
     [
@@ -343,7 +344,7 @@ const key_actions = {
     'q': () => scale_julia(0.5),
     'w': () => scale_julia(2),
     'i': iterate,
-    'p':play
+    'p': toggle_iteration
 };
 
 document.addEventListener('keydown', (e) => {
