@@ -180,6 +180,11 @@ function update() {
     draw_pointers();
 }
 
+function iterate_z() {
+    z_value = fc(z_value,c_value);
+    draw_pointers();
+}
+
 document.addEventListener('keydown', (event) => {
     switch(event.key) {
         case 'r':
@@ -204,8 +209,7 @@ document.addEventListener('keydown', (event) => {
             scale_julia(2);
             break;
         case 'i':
-            z_value = fc(z_value,c_value);
-            draw_pointers();
+            iterate_z();
             break;
     }
 });
