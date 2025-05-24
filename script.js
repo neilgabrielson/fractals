@@ -142,6 +142,18 @@ const scale = (domain, factor, p) => [
     ]
 ];
 
+function scale_mandelbrot(factor) {
+    mandelbrot_domain = scale(mandelbrot_domain, factor, c_value);
+    plot_mandelbrot();
+    draw_pointer(c_value, mandelbrot_overlay, mandelbrot_domain);
+}
+
+function scale_julia(factor) {
+    julia_domain = scale(julia_domain, factor, z_value);
+    plot_julia();
+    draw_pointer(z_value, julia_overlay, julia_domain);
+}
+
 plot_mandelbrot();
 plot_julia();
 draw_pointers();
@@ -180,24 +192,16 @@ document.addEventListener('keydown', (event) => {
             draw_pointers();
             break;   
         case 'z':
-            mandelbrot_domain = scale(mandelbrot_domain,0.5,c_value);
-            plot_mandelbrot();
-            draw_pointers();
+            scale_mandelbrot(0.5);
             break;
         case 'x':
-            mandelbrot_domain = scale(mandelbrot_domain,2,c_value);
-            plot_mandelbrot();
-            draw_pointers();
+            scale_mandelbrot(2);
             break;
         case 'q':
-            julia_domain = scale(julia_domain,0.5,z_value);
-            plot_julia();
-            draw_pointers();
+            scale_julia(0.5);
             break;
         case 'w':
-            julia_domain = scale(julia_domain,2,z_value);
-            plot_julia();
-            draw_pointers();
+            scale_julia(2);
             break;
         case 'i':
             z_value = fc(z_value,c_value);
@@ -212,15 +216,8 @@ document.addEventListener('keydown', (event) => {
 
 mandelbrot_canvas.addEventListener('gestureend', (e) => {
     e.preventDefault();
-    if(e.scale > 1.0) {
-        mandelbrot_domain = scale(mandelbrot_domain,0.5,c_value);
-        plot_mandelbrot();
-        draw_pointers();
-    } else if (e.scale < 1.0) {
-        mandelbrot_domain = scale(mandelbrot_domain,2,c_value);
-        plot_mandelbrot();
-        draw_pointers();
-    }
+    if(e.scale > 1.0) scale_mandelbrot(0.5);
+    else if (e.scale < 1.0) scale_mandelbrot(2);
 }, {passive: false});
 
 ["gesturestart", "gesturechange"].forEach(evt =>
@@ -229,13 +226,6 @@ mandelbrot_canvas.addEventListener('gestureend', (e) => {
 
 julia_canvas.addEventListener('gestureend', (e) => {
     e.preventDefault();
-    if(e.scale > 1.0) {
-        julia_domain = scale(julia_domain,0.5,c_value);
-        plot_julia();
-        draw_pointers();
-    } else if (e.scale < 1.0) {
-        julia_domain = scale(julia_domain,2,c_value);
-        plot_julia();
-        draw_pointers();
-    }
+    if(e.scale > 1.0) scale_julia(0.5);
+    else if (e.scale < 1.0) scale_julia(2);
 }, {passive: false});
