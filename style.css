@@ -6,11 +6,10 @@ body {
 
 .fractal-container {
     display: flex;
-    gap: 20px;
-}
-
-canvas {
-    border: 2px solid black;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-content: center;
+    gap: 0;
 }
 
 .canvas-container {
