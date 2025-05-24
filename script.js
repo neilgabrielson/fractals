@@ -43,6 +43,14 @@ const fractal_types = {
         norm_sq: z => z[0]**2 + z[1]**2,
         esc_rad: 2
     },
+    quartic: {
+        fc: (z, c) => [
+            z[0]**4 - 6*z[0]**2*z[1]**2 + z[1]**4 + c[0],
+            4*z[0]**3*z[1] - 4*z[0]*z[1]**3 + c[1]
+        ],
+        norm_sq: z => z[0]**2 + z[1]**2,
+        esc_rad: 2
+    },
     burning_ship: {
         fc: (z, c) => [
             z[0]**2 - z[1]**2 + c[0],
@@ -88,15 +96,13 @@ const value = (point, domain) => [
     (1 - point[1] / resolution) * (domain[1][1]-domain[1][0]) + domain[1][0]
 ];
 
-const to_pixel = (point, domain) => [
-    (point[0]-domain[0][0]) / (domain[0][1]-domain[0][0]) * resolution,
-    (1 - (point[1]-domain[1][0]) / (domain[1][1]-domain[1][0])) * resolution
-];
-
 // draw pointer
 function draw_pointer(point, canvas, domain, color='red',size=8) {
     const ctx = canvas.getContext('2d');
-    const coords = to_pixel(point, domain);
+    const coords = [
+        (point[0]-domain[0][0]) / (domain[0][1]-domain[0][0]) * resolution,
+        (1 - (point[1]-domain[1][0]) / (domain[1][1]-domain[1][0])) * resolution
+    ];
     ctx.clearRect(0,0,canvas.width,canvas.height);
     // initialize
     ctx.strokeStyle = color;
@@ -121,11 +127,11 @@ function draw_pointers() {
 }
 
 function cmap(value, max=100) {
-  const i = Math.min(value * 255 / max, 255);
-  const red = Math.round(Math.sin(0.024 * i + 4) * 127 + 128);
-  const green = Math.round(Math.sin(0.024 * i + 0) * 127 + 128);
-  const blue = Math.round(Math.sin(0.024 * i + 2) * 127 + 128);
-  return [red, green, blue];
+  const i = Math.min(value / max, 1);
+  const r = Math.round(255 * Math.sin(Math.PI * i));
+  const g = Math.round(255 * Math.sin(Math.PI * (i + 1/3)));
+  const b = Math.round(255 * Math.sin(Math.PI * (i + 2/3)));
+  return [r, g, b];
 }
 
 function plot_mandelbrot(canvas=mandelbrot_canvas, domain=mandelbrot_domain) {
@@ -168,50 +174,11 @@ function plot_julia() {
     ctx.putImageData(imageData, 0, 0);
 }
 
-const scale = (domain, factor, p) => [
-    [
-        p[0] - (domain[0][1] - domain[0][0]) * factor / 2,
-        p[0] + (domain[0][1] - domain[0][0]) * factor / 2
-    ],
-    [
-        p[1] - (domain[1][1] - domain[1][0]) * factor / 2,
-        p[1] + (domain[1][1] - domain[1][0]) * factor / 2
-    ]
-];
-
-function scale_mandelbrot(factor) {
-    mandelbrot_domain = scale(mandelbrot_domain, factor, c_value);
-    plot_mandelbrot();
-    draw_pointer(c_value, mandelbrot_overlay, mandelbrot_domain);
-}
-
-function scale_julia(factor) {
-    julia_domain = scale(julia_domain, factor, z_value);
-    plot_julia();
-    draw_pointer(z_value, julia_overlay, julia_domain);
-}
-
 plot_mandelbrot();
 plot_julia();
 draw_pointers();
 
-mandelbrot_canvas.addEventListener('click', (event) => {
-    c_locked = !c_locked;
-    const rect = mandelbrot_canvas.getBoundingClientRect();
-    const point = [event.clientX - rect.left, event.clientY - rect.top];
-    c_value = value(point,mandelbrot_domain);
-    plot_julia();
-    draw_pointers();
-});
-
-var c_locked = true;
-
-julia_canvas.addEventListener('click', (event) => {
-    const rect = julia_canvas.getBoundingClientRect();
-    const point = [event.clientX - rect.left, event.clientY - rect.top];
-    z_value = value(point,julia_domain)
-    draw_pointers();
-});
+// utility functions
 
 function update() {
     c_value = [parseFloat(document.getElementById("c_rl").value), parseFloat(document.getElementById("c_im").value)];
@@ -239,6 +206,49 @@ function iterate_z() {
     z_value = fractal_types[current_fractal].fc(z_value,c_value);
     draw_pointers();
 }
+
+const scale = (domain, factor, p) => [
+    [
+        p[0] - (domain[0][1] - domain[0][0]) * factor / 2,
+        p[0] + (domain[0][1] - domain[0][0]) * factor / 2
+    ],
+    [
+        p[1] - (domain[1][1] - domain[1][0]) * factor / 2,
+        p[1] + (domain[1][1] - domain[1][0]) * factor / 2
+    ]
+];
+
+function scale_mandelbrot(factor) {
+    mandelbrot_domain = scale(mandelbrot_domain, factor, c_value);
+    plot_mandelbrot();
+    draw_pointer(c_value, mandelbrot_overlay, mandelbrot_domain);
+}
+
+function scale_julia(factor) {
+    julia_domain = scale(julia_domain, factor, z_value);
+    plot_julia();
+    draw_pointer(z_value, julia_overlay, julia_domain);
+}
+
+// event listeners
+
+mandelbrot_canvas.addEventListener('click', (event) => {
+    c_locked = !c_locked;
+    const rect = mandelbrot_canvas.getBoundingClientRect();
+    const point = [event.clientX - rect.left, event.clientY - rect.top];
+    c_value = value(point,mandelbrot_domain);
+    plot_julia();
+    draw_pointers();
+});
+
+var c_locked = true;
+
+julia_canvas.addEventListener('click', (event) => {
+    const rect = julia_canvas.getBoundingClientRect();
+    const point = [event.clientX - rect.left, event.clientY - rect.top];
+    z_value = value(point,julia_domain)
+    draw_pointers();
+});
 
 const key_actions = {
     'r': reset,
