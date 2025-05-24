@@ -22,6 +22,14 @@
                         <option value="burning_ship">Burning Ship</option>
                     </select>
                 </label>
+                <label>
+                    Color Map:
+                    <select id="cmap" onchange="update_cmap()">
+                        <option value="dark_red">Dark Red</option>
+                        <option value="aqua">Aqua</option>
+                        <option value="viridis">Viridis</option>
+                    </select>
+                </label>
                 <div class="fractal-container">
                     <div class="canvas-container">
                         <canvas id="mandelbrot" width="400" height="400"></canvas>
@@ -41,6 +49,7 @@
                             <button onclick="scale_julia(2)">-</button>
                             <button onclick="reset_julia()">Reset</button>
                             <button onclick="iterate()">Iterate</button>
+                            <button id="iteration_toggle">Play</button>
                         </div>
                     </div>
                 </div>
@@ -56,17 +65,24 @@
                 </form>
                 <br/>
                 <label>
-                    Iterations:
+                    Escape Iterations:
                     <span id="esc_time_indicator">100</span>
-                    <br/>
-                    <input type="range" id="esc_time_slider" min="10" max="1000" value="100" step="10" onchange="update_escape_time()">
+                    <input type="range" id="esc_time_slider" min="10" max="1000" value="100" step="10">
                 </label>
+                <br/>
+                <label>
+                    Iteration Interval:
+                    <span id="play_speed_indicator">500</span>
+                    <input type="range" id="play_speed_slider" min="10" max="1000" value="500" step="10">
+                </label>
+                <br/>
+                <button onclick="reset()">Full Reset</button>
                 <h3>Keyboard Shortcuts:</h3>
                 <ul>
                     <li>[i] - iterate</li>
-                    <li>[r] - reset</li>
-                    <li>[z/x] - mandelbrot zoom</li>
-                    <li>[q/w] - julia zoom</li>
+                    <li>[r] - full reset</li>
+                    <li>[z/x] - zoom (parameter space)</li>
+                    <li>[q/w] - zoom (phase space)</li>
                 </ul>
                 <h3>Links:</h3>
                 <ul>

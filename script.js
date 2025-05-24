@@ -77,6 +77,8 @@ var max_iterations = 100;
 
 var c_locked = true;
 
+var cmap = 'dark_red';
+
 // define escape time function
 function escape_time(z, c) {
     const {fc, norm_sq, esc_rad} = fractal_types[current_fractal];
@@ -123,12 +125,28 @@ function draw_pointers() {
     document.getElementById("z_im").value = z_value[1];
 }
 
-function cmap(value, max=100) {
-  const i = Math.min(value / max, 1);
-  const r = Math.round(255 * Math.sin(Math.PI * i));
-  const g = Math.round(255 * Math.sin(Math.PI * (i + 1/3)));
-  const b = Math.round(255 * Math.sin(Math.PI * (i + 2/3)));
-  return [r, g, b];
+const cmaps = {
+    aqua: (value, max=100) => {
+        var i = Math.min(value / max, 1);
+        const r = Math.round(255 * Math.sin(Math.PI * i));
+        const g = Math.round(255 * Math.sin(Math.PI * (i + 1/3)));
+        const b = Math.round(255 * Math.sin(Math.PI * (i + 2/3)));
+        return [r, g, b];
+    },
+    dark_red: (value, max=100) => {
+        var i = 1-Math.min(value / max, 1);
+        const r = Math.round(255 * Math.sin(Math.PI * i));
+        const g = Math.round(255 * Math.sin(Math.PI * (i + 1/3)));
+        const b = Math.round(255 * Math.sin(Math.PI * (i + 2/3)));
+        return [r, g, b];
+    },
+    viridis: (value, max=100) => {
+        const i = Math.min(value / max, 1);
+        const r = Math.round(255 * Math.pow(Math.sin(Math.PI * i / 2), 1.5));
+        const g = Math.round(255 * Math.pow(i, 0.5));
+        const b = Math.round(255 * Math.cos(Math.PI * i / 2));
+        return [r, g, b];
+    }
 }
 
 function plot_mandelbrot(canvas=mandelbrot_canvas, domain=mandelbrot_domain) {
@@ -140,7 +158,7 @@ function plot_mandelbrot(canvas=mandelbrot_canvas, domain=mandelbrot_domain) {
                 [0,0],
                 value([x,y],domain)
             );
-            const color = iterations === 0 ? [0,0,0] : cmap(iterations);
+            const color = iterations === 0 ? [0,0,0] : cmaps[cmap](iterations);
             const index = (y * canvas.width + x) * 4;
             imageData.data[index] = color[0];
             imageData.data[index + 1] = color[1];
@@ -160,7 +178,7 @@ function plot_julia() {
                 value([x,y],julia_domain),
                 c_value
             );
-            const color = iterations === 0 ? [0,0,0] : cmap(iterations);
+            const color = iterations === 0 ? [0,0,0] : cmaps[cmap](iterations);
             const index = (y * resolution + x) * 4;
             imageData.data[index] = color[0];
             imageData.data[index + 1] = color[1];
@@ -171,8 +189,12 @@ function plot_julia() {
     ctx.putImageData(imageData, 0, 0);
 }
 
-plot_mandelbrot();
-plot_julia();
+function plot() {
+    plot_julia();
+    plot_mandelbrot();
+}
+
+plot();
 draw_pointers();
 
 // utility functions
@@ -228,20 +250,46 @@ function reset() {
 
 function update_fractal_type() {
     current_fractal = document.getElementById('fractal_type').value;
-    reset();
+    plot();
 }
 
-function update_escape_time() {
-    max_iterations = document.getElementById('esc_time_slider').value;
-    document.getElementById("esc_time_indicator").innerHTML = max_iterations;
-    plot_julia();
-    plot_mandelbrot();
+function update_cmap() {
+    cmap = document.getElementById('cmap').value;
+    plot();
 }
+
+document.getElementById("esc_time_slider").addEventListener('change', function() {
+    document.getElementById("esc_time_indicator").innerHTML = max_iterations = this.value;
+    plot();
+});
+
+let play_speed = 500;
+
+document.getElementById("play_speed_slider").addEventListener('change', function() {
+    document.getElementById("play_speed_indicator").innerHTML = play_speed = this.value;
+    if (intervalId !== null) {
+        clearInterval(intervalId);
+        intervalId = setInterval(iterate, play_speed);
+    }
+});
 
 function iterate() {
     z_value = fractal_types[current_fractal].fc(z_value,c_value);
     draw_pointers();
 }
+
+let intervalId = null;
+
+document.getElementById("iteration_toggle").addEventListener('click', function () {
+    if (intervalId===null) {
+        intervalId = setInterval(iterate, play_speed);
+        this.innerHTML = "Pause";
+    } else {
+        clearInterval(intervalId);
+        intervalId = null;
+        this.innerHTML = "Play"
+    }
+});
 
 const scale = (domain, factor, p) => [
     [
@@ -284,13 +332,18 @@ julia_canvas.addEventListener('click', (event) => {
     draw_pointers();
 });
 
+function play() {
+    document.setInterval(iterate,10);
+}
+
 const key_actions = {
     'r': reset,
     'z': () => scale_mandelbrot(0.5),
     'x': () => scale_mandelbrot(2),
     'q': () => scale_julia(0.5),
     'w': () => scale_julia(2),
-    'i': iterate
+    'i': iterate,
+    'p':play
 };
 
 document.addEventListener('keydown', (e) => {
