@@ -10,6 +10,7 @@ body {
     justify-content: center;
     align-content: center;
     gap: 0;
+    padding: 20px 0;
 }
 
 .canvas-container {
@@ -22,4 +23,20 @@ body {
     top: 0;
     left: 0;
     pointer-events: none; /* Let clicks pass through to main canvas */
+}
+
+.canvas-controls {
+    margin: 8px;
+    display: flex;
+    gap: 8px;
+}
+
+.canvas-controls button {
+    padding: 6px 12px;
+    font-size: 1rem;
+    cursor: pointer;
+}
+
+form {
+    padding: 5px;
 }

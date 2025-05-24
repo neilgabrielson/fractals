@@ -8,14 +8,9 @@ const julia_canvas = document.getElementById('julia');
 const mandelbrot_overlay = document.getElementById('mandelbrot-overlay');
 const julia_overlay = document.getElementById('julia-overlay');
 
-mandelbrot_canvas.width = resolution;
-mandelbrot_canvas.height = resolution;
-mandelbrot_overlay.width = resolution;
-mandelbrot_overlay.height = resolution;
-julia_canvas.width = resolution;
-julia_canvas.height = resolution;
-julia_overlay.width = resolution;
-julia_overlay.height = resolution;
+[mandelbrot_canvas, mandelbrot_overlay, julia_canvas, julia_overlay].forEach(canvas => {
+    canvas.width, canvas.height = resolution;
+});
 
 const fractal_types = {
     standard: {
@@ -79,6 +74,8 @@ var c_value = [0,0];
 
 var current_fractal = 'standard';
 var max_iterations = 100;
+
+var c_locked = true;
 
 // define escape time function
 function escape_time(z, c) {
@@ -180,28 +177,53 @@ draw_pointers();
 
 // utility functions
 
-function update() {
-    const form = document.getElementById('coords_form')
+function update_c() {
+    const form = document.getElementById('c_form')
     c_value = [
-        parseFloat(form.elements["c_rl"].value),
-        parseFloat(form.elements["c_im"].value)
+        parseFloat(form.elements["real"].value),
+        parseFloat(form.elements["imag"].value)
     ];
     plot_julia();
+    draw_pointers();
+}
+
+function update_z() {
+    const form = document.getElementById('z_form')
     z_value = [
-        parseFloat(form.elements["z_rl"].value),
-        parseFloat(form.elements["z_im"].value)
+        parseFloat(form.elements["real"].value),
+        parseFloat(form.elements["imag"].value)
     ];
     draw_pointers();
 }
 
-function reset() {
+function toggle_c_lock() {
+    btn = document.getElementById("c_lock_btn");
+    if (c_locked) {
+        btn.innerHTML = "Lock";
+        c_locked = false;
+    } else {
+        btn.innerHTML = "Unlock";
+        c_locked = true;
+    }
+}
+
+function reset_mandelbrot() {
     mandelbrot_domain = [[-2, 2], [-2, 2]];
-    julia_domain = [[-2, 2], [-2, 2]];
-    c_value = [0,0];
-    z_value = [0,0];
-    plot_julia();
     plot_mandelbrot();
     draw_pointers();
+}
+
+function reset_julia() {
+    julia_domain = [[-2, 2], [-2, 2]];
+    plot_julia();
+    draw_pointers();
+}
+
+function reset() {
+    z_value = [0,0];
+    c_value = [0,0];
+    reset_mandelbrot();
+    reset_julia();
 }
 
 function update_fractal_type() {
@@ -210,10 +232,13 @@ function update_fractal_type() {
 }
 
 function update_escape_time() {
-    max_iterations = document.getElementById('escape_time').value;
+    max_iterations = document.getElementById('esc_time_slider').value;
+    document.getElementById("esc_time_indicator").innerHTML = max_iterations;
+    plot_julia();
+    plot_mandelbrot();
 }
 
-function iterate_z() {
+function iterate() {
     z_value = fractal_types[current_fractal].fc(z_value,c_value);
     draw_pointers();
 }
@@ -244,15 +269,13 @@ function scale_julia(factor) {
 // event listeners
 
 mandelbrot_canvas.addEventListener('click', (event) => {
-    c_locked = !c_locked;
+    if (!c_locked) toggle_c_lock();
     const rect = mandelbrot_canvas.getBoundingClientRect();
     const point = [event.clientX - rect.left, event.clientY - rect.top];
     c_value = value(point,mandelbrot_domain);
     plot_julia();
     draw_pointers();
 });
-
-var c_locked = true;
 
 julia_canvas.addEventListener('click', (event) => {
     const rect = julia_canvas.getBoundingClientRect();
@@ -267,7 +290,7 @@ const key_actions = {
     'x': () => scale_mandelbrot(2),
     'q': () => scale_julia(0.5),
     'w': () => scale_julia(2),
-    'i': iterate_z
+    'i': iterate
 };
 
 document.addEventListener('keydown', (e) => {
