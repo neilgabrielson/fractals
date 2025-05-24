@@ -19,8 +19,8 @@ julia_overlay.width = resolution;
 julia_overlay.height = resolution;
 
 // define fc and norm squared fucntions
-const fc = (z, c) => [z[0]**2-z[1]**2+c[0], 2*z[0]*z[1]+c[1]];
-const norm_sq = z => z[0]**2+z[1]**2;
+const fc = (z, c) => [z[0]**2+z[1]**2+c[0], 2*z[0]*z[1]+c[1]];
+const norm_sq = z => z[0]**2-z[1]**2;
 
 // set initial domains
 var mandelbrot_domain = [[-2,2],[-2,2]]
@@ -34,7 +34,7 @@ var c_value = [0,0];
 function escape_time(z, c) {
     for (let n = 1; n < max_iterations; n++) {
         z = fc(z,c);
-        if (norm_sq(z) >= 4) return n;
+        if (Math.abs(norm_sq(z)) >= 1000) return n;
     }
     return 0;
 }
