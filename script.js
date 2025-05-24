@@ -20,7 +20,7 @@ julia_overlay.height = resolution;
 
 // define fc and norm squared fucntions
 const fc = (z, c) => [z[0]**2-z[1]**2+c[0], 2*z[0]*z[1]+c[1]];
-const norm_sq = z => z[0]**2 + z[1]**2;
+const norm_sq = z => z[0]**2+z[1]**2;
 
 // set initial domains
 var mandelbrot_domain = [[-2,2],[-2,2]]
@@ -187,7 +187,7 @@ document.addEventListener('keydown', (event) => {
             break;
         case 'w':
             julia_domain = scale(julia_domain,2,z_value);
-            plot_mandelbrot();
+            plot_julia();
             draw_pointers();
             break;
         case 'i':
