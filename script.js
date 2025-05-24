@@ -206,14 +206,36 @@ document.addEventListener('keydown', (event) => {
     }
 });
 
-mandelbrot_canvas.addEventListener('gestureend', (event) => {
-    if(event.scale > 1.0) {
+["gesturestart", "gesturechange"].forEach(evt =>
+    mandelbrot_canvas.addEventListener(evt, e => e.preventDefault(), {passive: false})
+);
+
+mandelbrot_canvas.addEventListener('gestureend', (e) => {
+    e.preventDefault();
+    if(e.scale > 1.0) {
         mandelbrot_domain = scale(mandelbrot_domain,0.5,c_value);
         plot_mandelbrot();
         draw_pointers();
-    } else if (event.scale<1.0) {
+    } else if (e.scale < 1.0) {
         mandelbrot_domain = scale(mandelbrot_domain,2,c_value);
         plot_mandelbrot();
         draw_pointers();
     }
-});
+}, {passive: false});
+
+["gesturestart", "gesturechange"].forEach(evt =>
+    julia_canvas.addEventListener(evt, e => e.preventDefault(), {passive: false})
+);
+
+julia_canvas.addEventListener('gestureend', (e) => {
+    e.preventDefault();
+    if(e.scale > 1.0) {
+        julia_domain = scale(julia_domain,0.5,c_value);
+        plot_julia();
+        draw_pointers();
+    } else if (e.scale < 1.0) {
+        julia_domain = scale(julia_domain,2,c_value);
+        plot_julia();
+        draw_pointers();
+    }
+}, {passive: false});
