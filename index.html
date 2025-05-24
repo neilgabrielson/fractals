@@ -2,36 +2,61 @@
 <html>
     <head>
         <link rel="stylesheet" type="text/css" href="style.css">
+        <link rel="stylesheet" type="text/css" href="https://neilgabrielson.com/style.css" />
         <title>Fractals</title>
     </head>
     <body>
-        <h1>Fractals</h1>
-        <div class="fractal-container">
-            <div class="canvas-container">
-                <canvas id="mandelbrot" width="400" height="400"></canvas>
-                <canvas id="mandelbrot-overlay" width="400" height="400"></canvas>
-            </div>
-            <div class="canvas-container">
-                <canvas id="julia" width="400" height="400"></canvas>
-                <canvas id="julia-overlay" width="400" height="400"></canvas>
-            </div>
-        </div>
-        <div>
-            <p>c = <input id="c_rl"/> + <input id="c_im"/>i</p>
-            <p>z = <input id="z_rl"/> + <input id="z_im"/>i</p>
-            <button onclick="update()">Update</button>
-            <button onclick="iterate_z()">Iterate</button>
-            <button onclick="reset()">Reset</button>
-            <br/>
-            <select id="fractal_type" onchange="update_fractal_type()">
-                <option value="standard">Mandelbrot</option>
-                <option value="cubic">Cubic Multibrot</option>
-                <option value="quartic">Quartic Multibrot</option>
-                <option value="hyperbolic">Hyperbolic Mandelbrot</option>
-                <option value="burning_ship">Burning Ship</option>
-            </select>
-            <br/>
-            <input type="range" id="escape_time" min="10" max="1000" value="100" step="10" onchange="update_escape_time()">
+        <div id="container">
+            <header>
+                <h1>Fractals</h1>
+                <h3>by Neil Gabrielson</h3>
+            </header>
+            <main>
+                <div class="fractal-container">
+                    <div class="canvas-container">
+                        <canvas id="mandelbrot" width="400" height="400"></canvas>
+                        <canvas id="mandelbrot-overlay" width="400" height="400"></canvas>
+                    </div>
+                    <div class="canvas-container">
+                        <canvas id="julia" width="400" height="400"></canvas>
+                        <canvas id="julia-overlay" width="400" height="400"></canvas>
+                    </div>
+                </div>
+                <h3>Control Panel:</h3>
+                <label>
+                    Fractal Type: 
+                    <select id="fractal_type" onchange="update_fractal_type()">
+                        <option value="standard">Mandelbrot</option>
+                        <option value="cubic">Cubic Multibrot</option>
+                        <option value="quartic">Quartic Multibrot</option>
+                        <option value="hyperbolic">Hyperbolic Mandelbrot</option>
+                        <option value="burning_ship">Burning Ship</option>
+                    </select>
+                </label>
+                <form id="coords_form" onsubmit="event.preventDefault(); update();">
+                    <p>
+                        <label>c = <input id="c_rl" name="c_rl" /></label>
+                        <label> + <input id="c_im" name="c_im" />i</label>
+                    </p>
+                    <p>
+                        <label>z = <input id="z_rl" name="z_rl" /></label>
+                        <label> + <input id="z_im" name="z_im" />i</label>
+                    </p>
+                    <p>
+                        <button type="submit">Update</button>
+                    </p>
+                </form>
+                <button onclick="iterate_z()">Iterate</button>
+                <button onclick="reset()">Reset</button>
+                <label>Escape time: <input type="range" id="escape_time" min="10" max="1000" value="100" step="10" onchange="update_escape_time()"></label>
+                <h3>Keyboard Shortcuts:</h3>
+                <ul>
+                    <li>[i] - iterate fc</li>
+                    <li>[r] - reset frames</li>
+                    <li>[z/x] - mandelbrot zoom</li>
+                    <li>[q/w] - julia zoom</li>
+                </il>
+            </main>
         </div>
         <script src="script.js"></script>
     </body>

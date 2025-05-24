@@ -181,9 +181,16 @@ draw_pointers();
 // utility functions
 
 function update() {
-    c_value = [parseFloat(document.getElementById("c_rl").value), parseFloat(document.getElementById("c_im").value)];
+    const form = document.getElementById('coords_form')
+    c_value = [
+        parseFloat(form.elements["c_rl"].value),
+        parseFloat(form.elements["c_im"].value)
+    ];
     plot_julia();
-    z_value = [parseFloat(document.getElementById("z_rl").value), parseFloat(document.getElementById("z_im").value)];
+    z_value = [
+        parseFloat(form.elements["z_rl"].value),
+        parseFloat(form.elements["z_im"].value)
+    ];
     draw_pointers();
 }
 
