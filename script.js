@@ -1,7 +1,7 @@
 // script.js
 
 const resolution = 400;
-const max_iterations = 100;
+const max_iterations = 200;
 
 const mandelbrot_canvas = document.getElementById('mandelbrot');
 const julia_canvas = document.getElementById('julia');
@@ -42,12 +42,12 @@ function escape_time(z, c) {
 // define pixel to complex cordinate function
 const value = (point, domain) => [
     point[0] / resolution * (domain[0][1]-domain[0][0]) + domain[0][0],
-    point[1] / resolution * (domain[1][1]-domain[1][0]) + domain[1][0]
+    (1 - point[1] / resolution) * (domain[1][1]-domain[1][0]) + domain[1][0]
 ];
 
 const to_pixel = (point, domain) => [
     (point[0]-domain[0][0]) / (domain[0][1]-domain[0][0]) * resolution,
-    (point[1]-domain[1][0]) / (domain[1][1]-domain[1][0]) * resolution
+    (1 - (point[1]-domain[1][0]) / (domain[1][1]-domain[1][0])) * resolution
 ];
 
 // draw pointer
@@ -77,9 +77,12 @@ function draw_pointers() {
     document.getElementById("z_im").value = z_value[1];
 }
 
-function colormap(x) {
-    x *= 255;
-    return [x,x,255-x]
+function cmap(value, max=100) {
+  const i = Math.min(value * 255 / max, 255);
+  const red = Math.round(Math.sin(0.024 * i + 4) * 127 + 128);
+  const green = Math.round(Math.sin(0.024 * i + 0) * 127 + 128);
+  const blue = Math.round(Math.sin(0.024 * i + 2) * 127 + 128);
+  return [red, green, blue];
 }
 
 function plot_mandelbrot(canvas=mandelbrot_canvas, domain=mandelbrot_domain) {
@@ -91,7 +94,7 @@ function plot_mandelbrot(canvas=mandelbrot_canvas, domain=mandelbrot_domain) {
                 [0,0],
                 value([x,y],domain)
             );
-            const color = iterations === 0 ? [0,0,0] : colormap(iterations/max_iterations);
+            const color = iterations === 0 ? [0,0,0] : cmap(iterations);
             const index = (y * canvas.width + x) * 4;
             imageData.data[index] = color[0];
             imageData.data[index + 1] = color[1];
@@ -112,7 +115,7 @@ function plot_julia() {
                 value([x,y],julia_domain),
                 c_value
             );
-            const color = iterations === 0 ? [0,0,0] : colormap(iterations/max_iterations);
+            const color = iterations === 0 ? [0,0,0] : cmap(iterations);
             const index = (y * resolution + x) * 4;
             imageData.data[index] = color[0];
             imageData.data[index + 1] = color[1];
