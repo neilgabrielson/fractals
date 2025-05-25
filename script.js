@@ -344,7 +344,8 @@ const key_actions = {
     'q': () => scale_julia(0.5),
     'w': () => scale_julia(2),
     'i': iterate,
-    'p': toggle_iteration
+    'p': toggle_iteration,
+    'l':toggle_c_lock
 };
 
 document.addEventListener('keydown', (e) => {
