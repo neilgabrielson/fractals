@@ -61,8 +61,7 @@ const fractal_types = {
         ],
         norm_sq: z => z[0]**2 - z[1]**2,
         esc_rad: 2
-    },
-
+    }
 }
 
 // set initial domains
@@ -152,7 +151,7 @@ const cmap_functions = {
 const cmaps = {
     aqua: Array.from({length: 101}, (_, i) => cmap_functions['aqua'](i)),
     dark_red: Array.from({length: 101}, (_, i) => cmap_functions['dark_red'](i)),
-    viridis: Array.from({length: 101}, (_, i) => cmap_functions['viridis'](i)),
+    viridis: Array.from({length: 101}, (_, i) => cmap_functions['aqua'](i)),
 }
 
 function plot(fracs=["julia","mandelbrot"]) {
