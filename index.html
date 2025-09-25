@@ -15,20 +15,20 @@
                 <label>
                     Fractal:
                     <select id="fractal_type" onchange="update_fractal_type()">
-                        <option value="standard">Mandelbrot</option>
-                        <option value="cubic">Cubic Multibrot</option>
-                        <option value="quartic">Quartic Multibrot</option>
-                        <option value="hyperbolic">Hyperbolic Mandelbrot</option>
-                        <option value="burning_ship">Burning Ship</option>
-                        <option value="tricorn">Tricorn</option>
+                        <option value="0">Mandelbrot</option>
+                        <option value="1">Cubic Multibrot</option>
+                        <option value="2">Quartic Multibrot</option>
+                        <option value="3">Hyperbolic Mandelbrot</option>
+                        <option value="4">Burning Ship</option>
+                        <option value="5">Tricorn</option>
                     </select>
                 </label>
                 <label>
                     Color Map:
                     <select id="cmap" onchange="update_cmap()">
-                        <option value="dark_red">Dark Red</option>
-                        <option value="aqua">Aqua</option>
-                        <option value="viridis">Viridis</option>
+                        <option value="0">Dark Red</option>
+                        <option value="1">Aqua</option>
+                        <option value="2">Viridis</option>
                     </select>
                 </label>
                 <div class="fractal-container">
@@ -95,5 +95,6 @@
             </main>
         </div>
         <script src="script.js"></script>
+        <script src="shaders.js"></script>
     </body>
 </html>

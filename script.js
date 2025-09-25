@@ -1,4 +1,4 @@
-// script.js
+// scripts.js
 
 const resolution = 400;
 
@@ -7,97 +7,216 @@ const canvases = {
     mandelbrot_overlay: document.getElementById('mandelbrot-overlay'),
     julia: document.getElementById('julia'),
     julia_overlay: document.getElementById('julia-overlay')
-}
+};
 
-Object.values(canvases).forEach(canvas => {
-    canvas.width, canvas.height = resolution;
-});
+// WebGL setup
+const gl_mandelbrot = canvases.mandelbrot.getContext('webgl');
+const gl_julia = canvases.julia.getContext('webgl');
 
-const fractal_types = {
-    standard: {
-        fc: (z, c) => [
-            z[0]**2 - z[1]**2 + c[0],
-            2*z[0]*z[1] + c[1]
-        ],
-        norm_sq: z => z[0]**2 + z[1]**2,
-        esc_rad: 2
-    },
-    hyperbolic: {
-        fc: (z, c) => [
-            z[0]**2 + z[1]**2 + c[0],
-            2*z[0]*z[1] - c[1]
-        ],
-        norm_sq: z => z[0]**2 - z[1]**2,
-        esc_rad: 10
-    },
-    cubic: {
-        fc: (z, c) => [
-            z[0]**3 - 3*z[0]*z[1]**2 + c[0],
-            3*z[0]**2*z[1] - z[1]**3 + c[1]
-        ],
-        norm_sq: z => z[0]**2 + z[1]**2,
-        esc_rad: 2
-    },
-    quartic: {
-        fc: (z, c) => [
-            z[0]**4 - 6*z[0]**2*z[1]**2 + z[1]**4 + c[0],
-            4*z[0]**3*z[1] - 4*z[0]*z[1]**3 + c[1]
-        ],
-        norm_sq: z => z[0]**2 + z[1]**2,
-        esc_rad: 2
-    },
-    burning_ship: {
-        fc: (z, c) => [
-            z[0]**2 - z[1]**2 + c[0],
-            Math.abs(2*z[0]*z[1]) + c[1]
-        ],
-        norm_sq: z => z[0]**2 + z[1]**2,
-        esc_rad: 2
-    },
-    tricorn: {
-        fc: (z, c) => [
-            z[0]**2 - z[1]**2 + c[0],
-            -2*z[0]*z[1] + c[1]
-        ],
-        norm_sq: z => z[0]**2 - z[1]**2,
-        esc_rad: 2
+// Vertex shader (same for both)
+const vertexShaderSource = `
+    attribute vec2 position;
+    varying vec2 v_position;
+    void main() {
+        v_position = position;
+        gl_Position = vec4(position, 0.0, 1.0);
     }
+`;
+
+// Fragment shader for fractals
+const fragmentShaderSource = `
+    precision highp float;
+    varying vec2 v_position;
+    
+    uniform vec2 u_domain_min;
+    uniform vec2 u_domain_max;
+    uniform vec2 u_c_value;
+    uniform vec2 u_z_value;
+    uniform int u_max_iterations;
+    uniform int u_fractal_type;
+    uniform int u_colormap;
+    uniform int u_is_julia;
+    
+    vec2 fractal_function(vec2 z, vec2 c, int fractal_type) {
+        if (fractal_type == 0) { // Standard Mandelbrot
+            return vec2(z.x * z.x - z.y * z.y + c.x, 2.0 * z.x * z.y + c.y);
+        } else if (fractal_type == 1) { // Cubic
+            return vec2(z.x * z.x * z.x - 3.0 * z.x * z.y * z.y + c.x, 3.0 * z.x * z.x * z.y - z.y * z.y * z.y + c.y);
+        } else if (fractal_type == 2) { // Quartic
+            return vec2(z.x * z.x * z.x * z.x - 6.0 * z.x * z.x * z.x * z.x + z.x * z.x * z.x * z.x + c.x, 4.0 * z.x * z.y * (z.x * z.x - z.y * z.y) + c.y);
+        } else if (fractal_type == 3) { // Hyperbolic
+            return vec2(z.x * z.x + z.y * z.y + c.x, 2.0 * z.x * z.y - c.y);
+        } else if (fractal_type == 4) { // Burning Ship
+            return vec2(z.x * z.x - z.y * z.y + c.x, abs(2.0 * z.x * z.y) + c.y);
+        } else if (fractal_type == 5) { // Tricorn
+            return vec2(z.x * z.x - z.y * z.y + c.x, -2.0 * z.x * z.y + c.y);
+        }
+        return z;
+    }
+    
+    float get_norm_sq(vec2 z, int fractal_type) {
+        if (fractal_type == 3 || fractal_type == 5) { // Hyperbolic or Tricorn
+            return z.x * z.x - z.y * z.y;
+        }
+        return z.x * z.x + z.y * z.y;
+    }
+    
+    float get_escape_radius(int fractal_type) {
+        if (fractal_type == 3) return 10.0; // Hyperbolic
+        return 2.0; // All others
+    }
+    
+    int escape_time(vec2 z_init, vec2 c) {
+        vec2 z = z_init;
+        float esc_rad = get_escape_radius(u_fractal_type);
+        float esc_rad_sq = esc_rad * esc_rad;
+        
+        for (int n = 1; n < 1000; n++) {
+            if (n >= u_max_iterations) break;
+            
+            float norm_sq = abs(get_norm_sq(z, u_fractal_type));
+            if (norm_sq >= esc_rad_sq) return n;
+            
+            z = fractal_function(z, c, u_fractal_type);
+        }
+        return 0;
+    }
+    
+    vec3 colormap(float value, int cmap_type) {
+        float i = clamp(value / 100.0, 0.0, 1.0);
+        
+        if (cmap_type == 0) { // Dark Red
+            i = 1.0 - i;
+            return vec3(
+                sin(3.14159 * i),
+                sin(3.14159 * (i + 0.333)),
+                sin(3.14159 * (i + 0.667))
+            );
+        } else if (cmap_type == 1) { // Aqua
+            return vec3(
+                sin(3.14159 * i),
+                sin(3.14159 * (i + 0.333)),
+                sin(3.14159 * (i + 0.667))
+            );
+        } else { // Viridis
+            return vec3(
+                pow(sin(3.14159 * i * 0.5), 1.5),
+                pow(i, 0.5),
+                cos(3.14159 * i * 0.5)
+            );
+        }
+    }
+    
+    void main() {
+        vec2 coord = mix(u_domain_min, u_domain_max, (v_position + 1.0) * 0.5);
+        
+        int iterations;
+        if (u_is_julia == 1) {
+            iterations = escape_time(coord, u_c_value);
+        } else {
+            iterations = escape_time(vec2(0.0, 0.0), coord);
+        }
+        
+        if (iterations == 0) {
+            gl_FragColor = vec4(0.0, 0.0, 0.0, 1.0);
+        } else {
+            vec3 color = colormap(float(iterations), u_colormap);
+            gl_FragColor = vec4(color, 1.0);
+        }
+    }
+`;
+
+function createShader(gl, type, source) {
+    const shader = gl.createShader(type);
+    gl.shaderSource(shader, source);
+    gl.compileShader(shader);
+    
+    if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+        console.error('Shader compile error:', gl.getShaderInfoLog(shader));
+        gl.deleteShader(shader);
+        return null;
+    }
+    return shader;
 }
 
-// set initial domains
+function createProgram(gl, vertexShader, fragmentShader) {
+    const program = gl.createProgram();
+    gl.attachShader(program, vertexShader);
+    gl.attachShader(program, fragmentShader);
+    gl.linkProgram(program);
+    
+    if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+        console.error('Program link error:', gl.getProgramInfoLog(program));
+        gl.deleteProgram(program);
+        return null;
+    }
+    return program;
+}
+
+function setupWebGL(gl) {
+    const vertexShader = createShader(gl, gl.VERTEX_SHADER, vertexShaderSource);
+    const fragmentShader = createShader(gl, gl.FRAGMENT_SHADER, fragmentShaderSource);
+    const program = createProgram(gl, vertexShader, fragmentShader);
+    
+    // Create quad buffer
+    const buffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
+        -1, -1,  1, -1, -1,  1,
+        -1,  1,  1, -1,  1,  1
+    ]), gl.STATIC_DRAW);
+    
+    const positionLocation = gl.getAttribLocation(program, 'position');
+    gl.enableVertexAttribArray(positionLocation);
+    gl.vertexAttribPointer(positionLocation, 2, gl.FLOAT, false, 0, 0);
+    
+    return program;
+}
+
+const program_mandelbrot = setupWebGL(gl_mandelbrot);
+const program_julia = setupWebGL(gl_julia);
+
+// State variables
 var domains = {
     mandelbrot: [[-2,2],[-2,2]],
     julia: [[-2,2],[-2,2]]
 }
 
-// set z and c values
 var z_value = [0,0];
 var c_value = [0,0];
-
-var current_fractal = 'standard';
+var current_fractal = 0;
 var max_iterations = 100;
-var cmap;
-
+var current_colormap = 0;
 var c_locked = true;
 
-// define escape time function
-function escape_time(z, c) {
-    const {fc, norm_sq, esc_rad} = fractal_types[current_fractal];
-    for (let n = 1; n < max_iterations; n++) {
-        if (Math.abs(norm_sq(z)) >= esc_rad**2) return n;
-        else z = fc(z,c);
-    }
-    return 0;
+function renderFractal(gl, program, domain, isJulia) {
+    gl.useProgram(program);
+    
+    // Set uniforms
+    gl.uniform2f(gl.getUniformLocation(program, 'u_domain_min'), domain[0][0], domain[1][0]);
+    gl.uniform2f(gl.getUniformLocation(program, 'u_domain_max'), domain[0][1], domain[1][1]);
+    gl.uniform2f(gl.getUniformLocation(program, 'u_c_value'), c_value[0], c_value[1]);
+    gl.uniform2f(gl.getUniformLocation(program, 'u_z_value'), z_value[0], z_value[1]);
+    gl.uniform1i(gl.getUniformLocation(program, 'u_max_iterations'), max_iterations);
+    gl.uniform1i(gl.getUniformLocation(program, 'u_fractal_type'), current_fractal);
+    gl.uniform1i(gl.getUniformLocation(program, 'u_colormap'), current_colormap);
+    gl.uniform1i(gl.getUniformLocation(program, 'u_is_julia'), isJulia ? 1 : 0);
+    
+    // Render
+    gl.viewport(0, 0, resolution, resolution);
+    gl.drawArrays(gl.TRIANGLES, 0, 6);
 }
 
-// define pixel to complex cordinate function
-const value = (point, domain) => [
-    point[0] / resolution * (domain[0][1]-domain[0][0]) + domain[0][0],
-    (1 - point[1] / resolution) * (domain[1][1]-domain[1][0]) + domain[1][0]
-];
+function plot(fracs=["julia","mandelbrot"]) {
+    if (fracs.includes("mandelbrot")) {
+        renderFractal(gl_mandelbrot, program_mandelbrot, domains.mandelbrot, false);
+    }
+    if (fracs.includes("julia")) {
+        renderFractal(gl_julia, program_julia, domains.julia, true);
+    }
+}
 
-// draw pointer
-function draw_pointer(point, canvas, domain, color='red',size=8) {
+function draw_pointer(point, canvas, domain, color='red', size=8) {
     const ctx = canvas.getContext('2d');
     const coords = [
         (point[0]-domain[0][0]) / (domain[0][1]-domain[0][0]) * resolution,
@@ -123,71 +242,7 @@ function draw_pointers() {
     document.getElementById("z_im").value = z_value[1];
 }
 
-const cmap_functions = {
-    aqua: (value, max=100) => {
-        var i = Math.min(value / max, 1);
-        const r = Math.round(255 * Math.sin(Math.PI * i));
-        const g = Math.round(255 * Math.sin(Math.PI * (i + 1/3)));
-        const b = Math.round(255 * Math.sin(Math.PI * (i + 2/3)));
-        return [r, g, b];
-    },
-    dark_red: (value, max=100) => {
-        var i = 1-Math.min(value / max, 1);
-        const r = Math.round(255 * Math.sin(Math.PI * i));
-        const g = Math.round(255 * Math.sin(Math.PI * (i + 1/3)));
-        const b = Math.round(255 * Math.sin(Math.PI * (i + 2/3)));
-        return [r, g, b];
-    },
-    viridis: (value, max=100) => {
-        const i = Math.min(value / max, 1);
-        const r = Math.round(255 * Math.pow(Math.sin(Math.PI * i / 2), 1.5));
-        const g = Math.round(255 * Math.pow(i, 0.5));
-        const b = Math.round(255 * Math.cos(Math.PI * i / 2));
-        return [r, g, b];
-    }
-}
-
-function update_cmap() {
-    const new_color = document.getElementById('cmap').value;
-    cmap = Array.from({length: 101}, (_, i) => cmap_functions[new_color](i))
-    plot();
-}
-
-function plot(fracs=["julia","mandelbrot"]) {
-    for (i in fracs) {
-        const ctx = canvases[fracs[i]].getContext("2d");
-        const imageData = ctx.createImageData(resolution, resolution);
-        for (let x = 0; x < resolution; x++) {
-            for (let y = 0; y < resolution; y++) {
-                const iterations = fracs[i] == "julia"
-                    ? escape_time(
-                        value([x,y],domains["julia"]),
-                        c_value
-                    )
-                    : fracs[i] == "mandelbrot"
-                    ? escape_time(
-                        [0,0],
-                        value([x,y],domains["mandelbrot"])
-                    )
-                    : 0;
-                const color = iterations === 0 ? [0,0,0] : cmap[iterations];
-                const index = (y * resolution + x) * 4;
-                imageData.data[index] = color[0];
-                imageData.data[index + 1] = color[1];
-                imageData.data[index + 2] = color[2];
-                imageData.data[index + 3] = 255;
-            }
-        }
-        ctx.putImageData(imageData, 0, 0);
-    }
-}
-
-update_cmap();
-plot();
-draw_pointers();
-
-// utility functions
-
+// Utility functions
 function update_c() {
     const form = document.getElementById('c_form')
     c_value = [
@@ -208,7 +263,7 @@ function update_z() {
 }
 
 function toggle_c_lock() {
-    btn = document.getElementById("c_lock_btn");
+    const btn = document.getElementById("c_lock_btn");
     if (c_locked) {
         btn.innerHTML = "Lock";
         c_locked = false;
@@ -238,44 +293,64 @@ function reset() {
 }
 
 function update_fractal_type() {
-    current_fractal = document.getElementById('fractal_type').value;
+    current_fractal = parseInt(document.getElementById('fractal_type').value);
     plot();
 }
 
-document.getElementById("esc_time_slider").addEventListener('change', function() {
-    document.getElementById("esc_time_indicator").innerHTML = max_iterations = this.value;
+function update_cmap() {
+    current_colormap = parseInt(document.getElementById('cmap').value);
     plot();
-});
+}
 
-let play_speed = 500;
+// Conversion function for complex coordinate to pixel
+const value = (point, domain) => [
+    point[0] / resolution * (domain[0][1]-domain[0][0]) + domain[0][0],
+    (1 - point[1] / resolution) * (domain[1][1]-domain[1][0]) + domain[1][0]
+];
 
-document.getElementById("play_speed_slider").addEventListener('change', function() {
-    document.getElementById("play_speed_indicator").innerHTML = play_speed = this.value;
-    if (intervalId !== null) {
-        clearInterval(intervalId);
-        intervalId = setInterval(iterate, play_speed);
+// Iteration functions
+const fractal_types = {
+    0: { // standard mandelbrot
+        fc: (z, c) => [z[0]**2 - z[1]**2 + c[0], 2*z[0]*z[1] + c[1]]
+    },
+    1: { // cubic
+        fc: (z, c) => [z[0]**3 - 3*z[0]*z[1]**2 + c[0], 3*z[0]**2*z[1] - z[1]**3 + c[1]]
+    },
+    2: { // quartic
+        fc: (z, c) => [z[0]**4 - 6*z[0]**2*z[1]**2 + z[1]**4 + c[0], 4*z[0]**3*z[1] - 4*z[0]*z[1]**3 + c[1]]
+    },
+    3: { // hyperbolic
+        fc: (z, c) => [z[0]**2 + z[1]**2 + c[0], 2*z[0]*z[1] - c[1]]
+    },
+    4: { // burning ship
+        fc: (z, c) => [z[0]**2 - z[1]**2 + c[0], Math.abs(2*z[0]*z[1]) + c[1]]
+    },
+    5: { // tricorn
+        fc: (z, c) => [z[0]**2 - z[1]**2 + c[0], -2*z[0]*z[1] + c[1]]
     }
-});
+}
 
 function iterate() {
-    z_value = fractal_types[current_fractal].fc(z_value,c_value);
+    z_value = fractal_types[current_fractal].fc(z_value, c_value);
     draw_pointers();
 }
 
 let intervalId = null;
+let play_speed = 500;
 
 function toggle_iteration() {
-    btn = document.getElementById("iteration_toggle");
-    if (intervalId===null) {
+    const btn = document.getElementById("iteration_toggle");
+    if (intervalId === null) {
         intervalId = setInterval(iterate, play_speed);
         btn.innerHTML = "Pause";
     } else {
         clearInterval(intervalId);
         intervalId = null;
-        btn.innerHTML = "Play"
+        btn.innerHTML = "Play";
     }
 }
 
+// Scaling function
 const scale = (domain, factor, p) => [
     [
         p[0] - (domain[0][1] - domain[0][0]) * factor / 2,
@@ -299,13 +374,12 @@ function scale_julia(factor) {
     draw_pointer(z_value, canvases.julia_overlay, domains.julia);
 }
 
-// event listeners
-
+// Event listeners
 canvases.mandelbrot.addEventListener('click', (event) => {
     if (!c_locked) toggle_c_lock();
     const rect = canvases.mandelbrot.getBoundingClientRect();
     const point = [event.clientX - rect.left, event.clientY - rect.top];
-    c_value = value(point,domains.mandelbrot);
+    c_value = value(point, domains.mandelbrot);
     plot(["julia"]);
     draw_pointers();
 });
@@ -313,14 +387,24 @@ canvases.mandelbrot.addEventListener('click', (event) => {
 canvases.julia.addEventListener('click', (event) => {
     const rect = canvases.julia.getBoundingClientRect();
     const point = [event.clientX - rect.left, event.clientY - rect.top];
-    z_value = value(point,domains.julia)
+    z_value = value(point, domains.julia);
     draw_pointers();
 });
 
-function play() {
-    document.setInterval(iterate,10);
-}
+document.getElementById("esc_time_slider").addEventListener('change', function() {
+    document.getElementById("esc_time_indicator").innerHTML = max_iterations = parseInt(this.value);
+    plot();
+});
 
+document.getElementById("play_speed_slider").addEventListener('change', function() {
+    document.getElementById("play_speed_indicator").innerHTML = play_speed = parseInt(this.value);
+    if (intervalId !== null) {
+        clearInterval(intervalId);
+        intervalId = setInterval(iterate, play_speed);
+    }
+});
+
+// Keyboard shortcuts
 const key_actions = {
     'r': reset,
     'z': () => scale_mandelbrot(0.5),
@@ -329,13 +413,14 @@ const key_actions = {
     'w': () => scale_julia(2),
     'i': iterate,
     'p': toggle_iteration,
-    'l':toggle_c_lock
+    'l': toggle_c_lock
 };
 
 document.addEventListener('keydown', (e) => {
     if (e.key in key_actions) key_actions[e.key]();
 });
 
+// Touch/gesture support
 ["gesturestart", "gesturechange"].forEach(evt =>
     canvases.mandelbrot.addEventListener(evt, e => e.preventDefault(), {passive: false})
 );
@@ -356,21 +441,26 @@ canvases.julia.addEventListener('gestureend', (e) => {
     else if (e.scale < 1.0) scale_julia(2);
 }, {passive: false});
 
+// Mouse move for unlocked mode
 let animationFrameRequested = false;
 
 canvases.mandelbrot.addEventListener('pointermove', (event) => {
-  if (!c_locked) {
-    latestMouseEvent = event;
-    if (!animationFrameRequested) {
-      animationFrameRequested = true;
-      requestAnimationFrame(() => {
-        animationFrameRequested = false;
-        const rect = canvases.mandelbrot.getBoundingClientRect();
-        const point = [latestMouseEvent.clientX - rect.left, latestMouseEvent.clientY - rect.top];
-        c_value = value(point, domains.mandelbrot);
-        plot(["julia"]);
-        draw_pointers();
-      });
+    if (!c_locked) {
+        latestMouseEvent = event;
+        if (!animationFrameRequested) {
+            animationFrameRequested = true;
+            requestAnimationFrame(() => {
+                animationFrameRequested = false;
+                const rect = canvases.mandelbrot.getBoundingClientRect();
+                const point = [latestMouseEvent.clientX - rect.left, latestMouseEvent.clientY - rect.top];
+                c_value = value(point, domains.mandelbrot);
+                plot(["julia"]);
+                draw_pointers();
+            });
+        }
     }
-  }
 });
+
+// Initialize
+plot();
+draw_pointers();
