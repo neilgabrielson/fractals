@@ -13,6 +13,10 @@ const resolution = canvases.mandelbrot.width;
 const gl_mandelbrot = canvases.mandelbrot.getContext('webgl', { preserveDrawingBuffer: true });
 const gl_julia = canvases.julia.getContext('webgl', { preserveDrawingBuffer: true });
 
+// Colormap textures
+let colormapTexture_mandelbrot = gl_mandelbrot.createTexture();
+let colormapTexture_julia = gl_julia.createTexture();
+
 // Vertex shader (same for both)
 const vertexShaderSource = `
     attribute vec2 position;
@@ -34,8 +38,8 @@ const fragmentShaderSource = `
     uniform vec2 u_z_value;
     uniform int u_max_iterations;
     uniform int u_fractal_type;
-    uniform int u_colormap;
     uniform int u_is_julia;
+    uniform sampler2D u_colormap_texture;
     
     vec2 fractal_function(vec2 z, vec2 c, int fractal_type) {
         if (fractal_type == 0) { // Standard Mandelbrot
@@ -99,30 +103,10 @@ const fragmentShaderSource = `
         }
         return 0;
     }
-    
-    vec3 colormap(float value, int cmap_type) {
-        float i = clamp(value / 100.0, 0.0, 1.0);
-        
-        if (cmap_type == 0) { // Dark Red
-            i = 1.0 - i;
-            return vec3(
-                sin(3.14159 * i),
-                sin(3.14159 * (i + 0.333)),
-                sin(3.14159 * (i + 0.667))
-            );
-        } else if (cmap_type == 1) { // Aqua
-            return vec3(
-                sin(3.14159 * i),
-                sin(3.14159 * (i + 0.333)),
-                sin(3.14159 * (i + 0.667))
-            );
-        } else { // Viridis
-            return vec3(
-                pow(sin(3.14159 * i * 0.5), 1.5),
-                pow(i, 0.5),
-                cos(3.14159 * i * 0.5)
-            );
-        }
+
+    vec3 colormap(float value) {
+        float t = clamp(value / 100.0, 0.0, 1.0);
+        return texture2D(u_colormap_texture, vec2(t, 0.5)).rgb;
     }
     
     void main() {
@@ -138,7 +122,7 @@ const fragmentShaderSource = `
         if (iterations == 0) {
             gl_FragColor = vec4(0.0, 0.0, 0.0, 1.0);
         } else {
-            vec3 color = colormap(float(iterations), u_colormap);
+            vec3 color = colormap(float(iterations));
             gl_FragColor = vec4(color, 1.0);
         }
     }
@@ -175,26 +159,21 @@ function setupWebGL(gl) {
     const vertexShader = createShader(gl, gl.VERTEX_SHADER, vertexShaderSource);
     const fragmentShader = createShader(gl, gl.FRAGMENT_SHADER, fragmentShaderSource);
     const program = createProgram(gl, vertexShader, fragmentShader);
-    
-    // Create quad buffer
     const buffer = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
     gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
         -1, -1,  1, -1, -1,  1,
         -1,  1,  1, -1,  1,  1
     ]), gl.STATIC_DRAW);
-    
     const positionLocation = gl.getAttribLocation(program, 'position');
     gl.enableVertexAttribArray(positionLocation);
     gl.vertexAttribPointer(positionLocation, 2, gl.FLOAT, false, 0, 0);
-    
     return program;
 }
 
 const program_mandelbrot = setupWebGL(gl_mandelbrot);
 const program_julia = setupWebGL(gl_julia);
 
-// State variables
 var domains = {
     mandelbrot: [[-2,2],[-2,2]],
     julia: [[-2,2],[-2,2]]
@@ -217,8 +196,13 @@ function renderFractal(gl, program, domain, isJulia) {
     gl.uniform2f(gl.getUniformLocation(program, 'u_z_value'), z_value[0], z_value[1]);
     gl.uniform1i(gl.getUniformLocation(program, 'u_max_iterations'), max_iterations);
     gl.uniform1i(gl.getUniformLocation(program, 'u_fractal_type'), current_fractal);
-    gl.uniform1i(gl.getUniformLocation(program, 'u_colormap'), current_colormap);
     gl.uniform1i(gl.getUniformLocation(program, 'u_is_julia'), isJulia ? 1 : 0);
+
+    // Colormap
+    gl.activeTexture(gl.TEXTURE0);
+    const texture = isJulia ? colormapTexture_julia : colormapTexture_mandelbrot;
+    gl.bindTexture(gl.TEXTURE_2D, texture);
+    gl.uniform1i(gl.getUniformLocation(program, 'u_colormap_texture'), 0);
     
     // Render
     gl.viewport(0, 0, resolution, resolution);
@@ -315,8 +299,62 @@ function update_fractal_type() {
     plot();
 }
 
+const cmap_functions = {
+    'dark_red': (value, max=100) => {
+        let i = 1.0 - Math.max(0, Math.min(1, value / max));
+        return [
+            Math.round(Math.max(0, Math.sin(Math.PI * i)) * 255),
+            Math.round(Math.max(0, Math.sin(Math.PI * (i + 1/3))) * 255),
+            Math.round(Math.max(0, Math.sin(Math.PI * (i + 2/3))) * 255)
+        ];
+    },
+    'aqua': (value, max=100) => {
+        var i = Math.min(value / max, 1);
+        return [
+            Math.round(Math.max(0, Math.sin(Math.PI * i)) * 255),
+            Math.round(Math.max(0, Math.sin(Math.PI * (i + 1/3))) * 255),
+            Math.round(Math.max(0, Math.sin(Math.PI * (i + 2/3))) * 255)
+        ];
+    },
+    'viridis': (value, max=100) => {
+        const i = Math.min(value / max, 1);
+        return [
+            Math.round(Math.pow(Math.max(0, Math.sin(Math.PI * i / 2)), 1.5) * 255),
+            Math.round(Math.pow(i, 0.5) * 255),
+            Math.round(Math.max(0, Math.cos(Math.PI * i / 2)) * 255)
+        ];
+    },
+    'flower': (value, max=100) => {
+        var i = Math.min(value / max, 1);
+        return [
+            Math.round((0.9 - 0.3 * Math.pow(i, 2)) * 255),
+            Math.round((0.6 + 0.4 * Math.max(0, Math.sin(Math.PI * i))) * 255),
+            Math.round((0.8 + 0.2 * Math.max(0, Math.sin(Math.PI * i * 3))) * 255)
+        ];
+    }
+}
+
+function update_colormap_texture(gl, texture, cmap_id) {
+    const textureData = new Uint8Array(256 * 3);
+    for (let i = 0; i < 256; i++) {
+        const [r, g, b] = cmap_functions[cmap_id](i, 100);
+        textureData[i * 3] = r;
+        textureData[i * 3 + 1] = g;
+        textureData[i * 3 + 2] = b;
+    }
+    gl.bindTexture(gl.TEXTURE_2D, texture);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB, 256, 1, 0, gl.RGB, gl.UNSIGNED_BYTE, textureData);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    return texture;
+}
+
 function update_cmap() {
-    current_colormap = parseInt(document.getElementById('cmap').value);
+    const new_color = document.getElementById('cmap').value;
+    colormapTexture_mandelbrot = update_colormap_texture(gl_mandelbrot, colormapTexture_mandelbrot, new_color);
+    colormapTexture_julia = update_colormap_texture(gl_julia, colormapTexture_julia, new_color);
     plot();
 }
 
@@ -487,5 +525,8 @@ canvases.mandelbrot.addEventListener('pointermove', (event) => {
 });
 
 // Initialize
+update_colormap_texture(gl_mandelbrot, colormapTexture_mandelbrot, 'dark_red');
+update_colormap_texture(gl_julia, colormapTexture_julia, 'dark_red');
+
 plot();
 draw_pointers();
