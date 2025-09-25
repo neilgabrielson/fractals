@@ -153,8 +153,6 @@ function update_cmap() {
     plot();
 }
 
-update_cmap();
-
 function plot(fracs=["julia","mandelbrot"]) {
     for (i in fracs) {
         const ctx = canvases[fracs[i]].getContext("2d");
@@ -184,6 +182,7 @@ function plot(fracs=["julia","mandelbrot"]) {
     }
 }
 
+update_cmap();
 plot();
 draw_pointers();
 
