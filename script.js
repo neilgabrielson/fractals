@@ -391,12 +391,12 @@ canvases.julia.addEventListener('click', (event) => {
     draw_pointers();
 });
 
-document.getElementById("esc_time_slider").addEventListener('change', function() {
+document.getElementById("esc_time_slider").addEventListener('input', function() {
     document.getElementById("esc_time_indicator").innerHTML = max_iterations = parseInt(this.value);
     plot();
 });
 
-document.getElementById("play_speed_slider").addEventListener('change', function() {
+document.getElementById("play_speed_slider").addEventListener('input', function() {
     document.getElementById("play_speed_indicator").innerHTML = play_speed = parseInt(this.value);
     if (intervalId !== null) {
         clearInterval(intervalId);
