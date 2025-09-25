@@ -1,7 +1,5 @@
 // scripts.js
 
-const resolution = 400;
-
 const canvases = {
     mandelbrot: document.getElementById('mandelbrot'),
     mandelbrot_overlay: document.getElementById('mandelbrot-overlay'),
@@ -9,9 +7,11 @@ const canvases = {
     julia_overlay: document.getElementById('julia-overlay')
 };
 
+const resolution = canvases.mandelbrot.width;
+
 // WebGL setup
-const gl_mandelbrot = canvases.mandelbrot.getContext('webgl');
-const gl_julia = canvases.julia.getContext('webgl');
+const gl_mandelbrot = canvases.mandelbrot.getContext('webgl', { preserveDrawingBuffer: true });
+const gl_julia = canvases.julia.getContext('webgl', { preserveDrawingBuffer: true });
 
 // Vertex shader (same for both)
 const vertexShaderSource = `
@@ -318,6 +318,13 @@ function update_fractal_type() {
 function update_cmap() {
     current_colormap = parseInt(document.getElementById('cmap').value);
     plot();
+}
+
+function download_canvas(canvas_id) {
+    const link = document.createElement('a');
+    link.download = `${canvas_id}.png`;
+    link.href = canvases[canvas_id].toDataURL('image/png');
+    link.click();
 }
 
 // Conversion function for complex coordinate to pixel
