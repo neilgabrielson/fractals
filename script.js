@@ -185,7 +185,7 @@ var domains = {
 var z_value = [0,0];
 var c_value = [0,0];
 var current_fractal = 0;
-var max_iterations = 100;
+var max_iterations = 1000;
 var current_colormap = 0;
 var c_locked = true;
 
