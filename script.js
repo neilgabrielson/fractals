@@ -125,7 +125,7 @@ function draw_pointers() {
     document.getElementById("z_im").value = z_value[1];
 }
 
-const cmaps = {
+const cmap_functions = {
     aqua: (value, max=100) => {
         var i = Math.min(value / max, 1);
         const r = Math.round(255 * Math.sin(Math.PI * i));
@@ -149,6 +149,12 @@ const cmaps = {
     }
 }
 
+const cmaps = {
+    aqua: Array.from({length: 101}, (_, i) => cmap_functions['aqua'](i)),
+    dark_red: Array.from({length: 101}, (_, i) => cmap_functions['dark_red'](i)),
+    viridis: Array.from({length: 101}, (_, i) => cmap_functions['viridis'](i)),
+}
+
 function plot(fracs=["julia","mandelbrot"]) {
     for (i in fracs) {
         const ctx = canvases[fracs[i]].getContext("2d");
@@ -166,7 +172,7 @@ function plot(fracs=["julia","mandelbrot"]) {
                         value([x,y],domains["mandelbrot"])
                     )
                     : 0;
-                const color = iterations === 0 ? [0,0,0] : cmaps[cmap](iterations);
+                const color = iterations === 0 ? [0,0,0] : cmaps[cmap][iterations];
                 const index = (y * resolution + x) * 4;
                 imageData.data[index] = color[0];
                 imageData.data[index + 1] = color[1];
