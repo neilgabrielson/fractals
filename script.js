@@ -39,17 +39,35 @@ const fragmentShaderSource = `
     
     vec2 fractal_function(vec2 z, vec2 c, int fractal_type) {
         if (fractal_type == 0) { // Standard Mandelbrot
-            return vec2(z.x * z.x - z.y * z.y + c.x, 2.0 * z.x * z.y + c.y);
+            return vec2(
+                z.x * z.x - z.y * z.y + c.x,
+                2.0 * z.x * z.y + c.y
+            );
         } else if (fractal_type == 1) { // Cubic
-            return vec2(z.x * z.x * z.x - 3.0 * z.x * z.y * z.y + c.x, 3.0 * z.x * z.x * z.y - z.y * z.y * z.y + c.y);
+            return vec2(
+                z.x * z.x * z.x - 3.0 * z.x * z.y * z.y + c.x,
+                3.0 * z.x * z.x * z.y - z.y * z.y * z.y + c.y
+            );
         } else if (fractal_type == 2) { // Quartic
-            return vec2(z.x * z.x * z.x * z.x - 6.0 * z.x * z.x * z.x * z.x + z.x * z.x * z.x * z.x + c.x, 4.0 * z.x * z.y * (z.x * z.x - z.y * z.y) + c.y);
+            return vec2(
+                z.x * z.x * z.x * z.x - 6.0 * z.x * z.x * z.y * z.y + z.y * z.y * z.y * z.y + c.x,
+                4.0 * z.x * z.y * (z.x * z.x - z.y * z.y) + c.y
+            );
         } else if (fractal_type == 3) { // Hyperbolic
-            return vec2(z.x * z.x + z.y * z.y + c.x, 2.0 * z.x * z.y - c.y);
+            return vec2(
+                z.x * z.x + z.y * z.y + c.x,
+                2.0 * z.x * z.y - c.y
+            );
         } else if (fractal_type == 4) { // Burning Ship
-            return vec2(z.x * z.x - z.y * z.y + c.x, abs(2.0 * z.x * z.y) + c.y);
+            return vec2(
+                z.x * z.x - z.y * z.y + c.x,
+                abs(2.0 * z.x * z.y) + c.y
+            );
         } else if (fractal_type == 5) { // Tricorn
-            return vec2(z.x * z.x - z.y * z.y + c.x, -2.0 * z.x * z.y + c.y);
+            return vec2(
+                z.x * z.x - z.y * z.y + c.x,
+                -2.0 * z.x * z.y + c.y
+            );
         }
         return z;
     }
