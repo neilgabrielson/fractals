@@ -76,10 +76,9 @@ var c_value = [0,0];
 
 var current_fractal = 'standard';
 var max_iterations = 100;
+var cmap;
 
 var c_locked = true;
-
-var cmap = 'dark_red';
 
 // define escape time function
 function escape_time(z, c) {
@@ -148,11 +147,13 @@ const cmap_functions = {
     }
 }
 
-const cmaps = {
-    aqua: Array.from({length: 101}, (_, i) => cmap_functions['aqua'](i)),
-    dark_red: Array.from({length: 101}, (_, i) => cmap_functions['dark_red'](i)),
-    viridis: Array.from({length: 101}, (_, i) => cmap_functions['viridis'](i)),
+function update_cmap() {
+    const new_color = document.getElementById('cmap').value;
+    cmap = Array.from({length: 101}, (_, i) => cmap_functions[new_color](i))
+    plot();
 }
+
+update_cmap();
 
 function plot(fracs=["julia","mandelbrot"]) {
     for (i in fracs) {
@@ -171,7 +172,7 @@ function plot(fracs=["julia","mandelbrot"]) {
                         value([x,y],domains["mandelbrot"])
                     )
                     : 0;
-                const color = iterations === 0 ? [0,0,0] : cmaps[cmap][iterations];
+                const color = iterations === 0 ? [0,0,0] : cmap[iterations];
                 const index = (y * resolution + x) * 4;
                 imageData.data[index] = color[0];
                 imageData.data[index + 1] = color[1];
@@ -239,11 +240,6 @@ function reset() {
 
 function update_fractal_type() {
     current_fractal = document.getElementById('fractal_type').value;
-    plot();
-}
-
-function update_cmap() {
-    cmap = document.getElementById('cmap').value;
     plot();
 }
 
