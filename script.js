@@ -2,13 +2,14 @@
 
 const resolution = 400;
 
-const mandelbrot_canvas = document.getElementById('mandelbrot');
-const julia_canvas = document.getElementById('julia');
+const canvases = {
+    mandelbrot: document.getElementById('mandelbrot'),
+    mandelbrot_overlay: document.getElementById('mandelbrot-overlay'),
+    julia: document.getElementById('julia'),
+    julia_overlay: document.getElementById('julia-overlay')
+}
 
-const mandelbrot_overlay = document.getElementById('mandelbrot-overlay');
-const julia_overlay = document.getElementById('julia-overlay');
-
-[mandelbrot_canvas, mandelbrot_overlay, julia_canvas, julia_overlay].forEach(canvas => {
+Object.values(canvases).forEach(canvas => {
     canvas.width, canvas.height = resolution;
 });
 
@@ -65,8 +66,10 @@ const fractal_types = {
 }
 
 // set initial domains
-var mandelbrot_domain = [[-2,2],[-2,2]]
-var julia_domain = [[-2,2],[-2,2]]
+var domains = {
+    mandelbrot: [[-2,2],[-2,2]],
+    julia: [[-2,2],[-2,2]]
+}
 
 // set z and c values
 var z_value = [0,0];
@@ -103,22 +106,19 @@ function draw_pointer(point, canvas, domain, color='red',size=8) {
         (1 - (point[1]-domain[1][0]) / (domain[1][1]-domain[1][0])) * resolution
     ];
     ctx.clearRect(0,0,canvas.width,canvas.height);
-    // initialize
     ctx.strokeStyle = color;
     ctx.lineWidth = 2;
     ctx.beginPath();
-    // Horizontal line
     ctx.moveTo(coords[0] - size, coords[1]);
     ctx.lineTo(coords[0] + size, coords[1]);
-    // Vertical line
     ctx.moveTo(coords[0], coords[1] - size);
     ctx.lineTo(coords[0], coords[1] + size);
     ctx.stroke();
 }
 
 function draw_pointers() {
-    draw_pointer(c_value, mandelbrot_overlay, mandelbrot_domain);
-    draw_pointer(z_value, julia_overlay, julia_domain);
+    draw_pointer(c_value, canvases.mandelbrot_overlay, domains.mandelbrot);
+    draw_pointer(z_value, canvases.julia_overlay, domains.julia);
     document.getElementById("c_rl").value = c_value[0];
     document.getElementById("c_im").value = c_value[1];
     document.getElementById("z_rl").value = z_value[0];
@@ -149,49 +149,33 @@ const cmaps = {
     }
 }
 
-function plot_mandelbrot(canvas=mandelbrot_canvas, domain=mandelbrot_domain) {
-    const ctx = canvas.getContext("2d");
-    const imageData = ctx.createImageData(canvas.width, canvas.height);
-    for (let x = 0; x < resolution; x++) {
-        for (let y = 0; y < resolution; y++) {
-            const iterations = escape_time(
-                [0,0],
-                value([x,y],domain)
-            );
-            const color = iterations === 0 ? [0,0,0] : cmaps[cmap](iterations);
-            const index = (y * canvas.width + x) * 4;
-            imageData.data[index] = color[0];
-            imageData.data[index + 1] = color[1];
-            imageData.data[index + 2] = color[2];
-            imageData.data[index + 3] = 255;
+function plot(fracs=["julia","mandelbrot"]) {
+    for (i in fracs) {
+        const ctx = canvases[fracs[i]].getContext("2d");
+        const imageData = ctx.createImageData(resolution, resolution);
+        for (let x = 0; x < resolution; x++) {
+            for (let y = 0; y < resolution; y++) {
+                const iterations = fracs[i] == "julia"
+                    ? escape_time(
+                        value([x,y],domains["julia"]),
+                        c_value
+                    )
+                    : fracs[i] == "mandelbrot"
+                    ? escape_time(
+                        [0,0],
+                        value([x,y],domains["mandelbrot"])
+                    )
+                    : 0;
+                const color = iterations === 0 ? [0,0,0] : cmaps[cmap](iterations);
+                const index = (y * resolution + x) * 4;
+                imageData.data[index] = color[0];
+                imageData.data[index + 1] = color[1];
+                imageData.data[index + 2] = color[2];
+                imageData.data[index + 3] = 255;
+            }
         }
+        ctx.putImageData(imageData, 0, 0);
     }
-    ctx.putImageData(imageData, 0, 0);
-}
-
-function plot_julia() {
-    const ctx = julia_canvas.getContext("2d");
-    const imageData = ctx.createImageData(resolution, resolution);
-    for (let x = 0; x < resolution; x++) {
-        for (let y = 0; y < resolution; y++) {
-            const iterations = escape_time(
-                value([x,y],julia_domain),
-                c_value
-            );
-            const color = iterations === 0 ? [0,0,0] : cmaps[cmap](iterations);
-            const index = (y * resolution + x) * 4;
-            imageData.data[index] = color[0];
-            imageData.data[index + 1] = color[1];
-            imageData.data[index + 2] = color[2];
-            imageData.data[index + 3] = 255;
-        }
-    }
-    ctx.putImageData(imageData, 0, 0);
-}
-
-function plot() {
-    plot_julia();
-    plot_mandelbrot();
 }
 
 plot();
@@ -205,7 +189,7 @@ function update_c() {
         parseFloat(form.elements["real"].value),
         parseFloat(form.elements["imag"].value)
     ];
-    plot_julia();
+    plot(["julia"]);
     draw_pointers();
 }
 
@@ -230,14 +214,14 @@ function toggle_c_lock() {
 }
 
 function reset_mandelbrot() {
-    mandelbrot_domain = [[-2, 2], [-2, 2]];
-    plot_mandelbrot();
+    domains.mandelbrot = [[-2, 2], [-2, 2]];
+    plot(["mandelbrot"]);
     draw_pointers();
 }
 
 function reset_julia() {
-    julia_domain = [[-2, 2], [-2, 2]];
-    plot_julia();
+    domains.julia = [[-2, 2], [-2, 2]];
+    plot(["julia"]);
     draw_pointers();
 }
 
@@ -304,32 +288,32 @@ const scale = (domain, factor, p) => [
 ];
 
 function scale_mandelbrot(factor) {
-    mandelbrot_domain = scale(mandelbrot_domain, factor, c_value);
-    plot_mandelbrot();
-    draw_pointer(c_value, mandelbrot_overlay, mandelbrot_domain);
+    domains.mandelbrot = scale(domains.mandelbrot, factor, c_value);
+    plot(["mandelbrot"]);
+    draw_pointer(c_value, canvases.mandelbrot_overlay, domains.mandelbrot);
 }
 
 function scale_julia(factor) {
-    julia_domain = scale(julia_domain, factor, z_value);
-    plot_julia();
-    draw_pointer(z_value, julia_overlay, julia_domain);
+    domains.julia = scale(domains.julia, factor, z_value);
+    plot(["julia"]);
+    draw_pointer(z_value, canvases.julia_overlay, domains.julia);
 }
 
 // event listeners
 
-mandelbrot_canvas.addEventListener('click', (event) => {
+canvases.mandelbrot.addEventListener('click', (event) => {
     if (!c_locked) toggle_c_lock();
-    const rect = mandelbrot_canvas.getBoundingClientRect();
+    const rect = canvases.mandelbrot.getBoundingClientRect();
     const point = [event.clientX - rect.left, event.clientY - rect.top];
-    c_value = value(point,mandelbrot_domain);
-    plot_julia();
+    c_value = value(point,domains.mandelbrot);
+    plot(["julia"]);
     draw_pointers();
 });
 
-julia_canvas.addEventListener('click', (event) => {
-    const rect = julia_canvas.getBoundingClientRect();
+canvases.julia.addEventListener('click', (event) => {
+    const rect = canvases.julia.getBoundingClientRect();
     const point = [event.clientX - rect.left, event.clientY - rect.top];
-    z_value = value(point,julia_domain)
+    z_value = value(point,domains.julia)
     draw_pointers();
 });
 
@@ -353,20 +337,20 @@ document.addEventListener('keydown', (e) => {
 });
 
 ["gesturestart", "gesturechange"].forEach(evt =>
-    mandelbrot_canvas.addEventListener(evt, e => e.preventDefault(), {passive: false})
+    canvases.mandelbrot.addEventListener(evt, e => e.preventDefault(), {passive: false})
 );
 
-mandelbrot_canvas.addEventListener('gestureend', (e) => {
+canvases.mandelbrot.addEventListener('gestureend', (e) => {
     e.preventDefault();
     if(e.scale > 1.0) scale_mandelbrot(0.5);
     else if (e.scale < 1.0) scale_mandelbrot(2);
 }, {passive: false});
 
 ["gesturestart", "gesturechange"].forEach(evt =>
-    julia_canvas.addEventListener(evt, e => e.preventDefault(), {passive: false})
+    canvases.julia.addEventListener(evt, e => e.preventDefault(), {passive: false})
 );
 
-julia_canvas.addEventListener('gestureend', (e) => {
+canvases.julia.addEventListener('gestureend', (e) => {
     e.preventDefault();
     if(e.scale > 1.0) scale_julia(0.5);
     else if (e.scale < 1.0) scale_julia(2);
@@ -374,17 +358,17 @@ julia_canvas.addEventListener('gestureend', (e) => {
 
 let animationFrameRequested = false;
 
-mandelbrot_canvas.addEventListener('pointermove', (event) => {
+canvases.mandelbrot.addEventListener('pointermove', (event) => {
   if (!c_locked) {
     latestMouseEvent = event;
     if (!animationFrameRequested) {
       animationFrameRequested = true;
       requestAnimationFrame(() => {
         animationFrameRequested = false;
-        const rect = mandelbrot_canvas.getBoundingClientRect();
+        const rect = canvases.mandelbrot.getBoundingClientRect();
         const point = [latestMouseEvent.clientX - rect.left, latestMouseEvent.clientY - rect.top];
-        c_value = value(point, mandelbrot_domain);
-        plot_julia();
+        c_value = value(point, domains.mandelbrot);
+        plot(["julia"]);
         draw_pointers();
       });
     }
