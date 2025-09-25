@@ -151,7 +151,7 @@ const cmap_functions = {
 const cmaps = {
     aqua: Array.from({length: 101}, (_, i) => cmap_functions['aqua'](i)),
     dark_red: Array.from({length: 101}, (_, i) => cmap_functions['dark_red'](i)),
-    viridis: Array.from({length: 101}, (_, i) => cmap_functions['aqua'](i)),
+    viridis: Array.from({length: 101}, (_, i) => cmap_functions['viridis'](i)),
 }
 
 function plot(fracs=["julia","mandelbrot"]) {
