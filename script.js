@@ -182,7 +182,7 @@ var domains = {
 var z_value = [0,0];
 var c_value = [0,0];
 var current_fractal = 0;
-var max_iterations = 1000;
+var max_iterations = 100;
 var color_map_resolution = 1000;
 var current_colormap = 0;
 var c_locked = true;
@@ -417,17 +417,17 @@ function iterate() {
     draw_pointers();
 }
 
-let intervalId = null;
+let iteration_interval = null;
 let play_speed = 500;
 
 function toggle_iteration() {
     const btn = document.getElementById("iteration_toggle");
-    if (intervalId === null) {
-        intervalId = setInterval(iterate, play_speed);
+    if (iteration_interval === null) {
+        iteration_interval = setInterval(iterate, play_speed);
         btn.innerHTML = "Pause";
     } else {
-        clearInterval(intervalId);
-        intervalId = null;
+        clearInterval(iteration_interval);
+        iteration_interval = null;
         btn.innerHTML = "Play";
     }
 }
@@ -476,7 +476,16 @@ canvases.julia.addEventListener('click', (event) => {
 let animationFrameRequested = false;
 
 document.getElementById("esc_time_slider").addEventListener('input', function() {
-    document.getElementById("esc_time_indicator").innerHTML = max_iterations = parseInt(this.value);
+    if (this.value <= 10) {
+        max_iterations = this.value
+    } else if (this.value <= 20) {
+        max_iterations = (this.value-10)*10
+    } else if (this.value <= 30) {
+        max_iterations = (this.value-20)*100
+    } else {
+        max_iterations = (this.value-30)*1000
+    }
+    document.getElementById("esc_time_indicator").innerHTML = max_iterations;
     if (!animationFrameRequested) {
         animationFrameRequested = true;
         requestAnimationFrame(() => {
@@ -488,9 +497,9 @@ document.getElementById("esc_time_slider").addEventListener('input', function() 
 
 document.getElementById("play_speed_slider").addEventListener('input', function() {
     document.getElementById("play_speed_indicator").innerHTML = play_speed = parseInt(this.value);
-    if (intervalId !== null) {
-        clearInterval(intervalId);
-        intervalId = setInterval(iterate, play_speed);
+    if (iteration_interval !== null) {
+        clearInterval(iteration_interval);
+        iteration_interval = setInterval(iterate, play_speed);
     }
 });
 
@@ -503,7 +512,7 @@ const key_actions = {
     'w': () => scale_julia(2),
     'i': iterate,
     'p': toggle_iteration,
-    'l': toggle_c_lock
+    'l': toggle_c_lock,
 };
 
 document.addEventListener('keydown', (e) => {
