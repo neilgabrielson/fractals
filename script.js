@@ -559,8 +559,8 @@ canvases.mandelbrot.addEventListener('pointermove', (event) => {
 });
 
 // Initialize
-update_colormap_texture(gl_mandelbrot, colormapTexture_mandelbrot, 'red');
-update_colormap_texture(gl_julia, colormapTexture_julia, 'red');
+update_colormap_texture(gl_mandelbrot, colormapTexture_mandelbrot, 'purple');
+update_colormap_texture(gl_julia, colormapTexture_julia, 'purple');
 
 plot();
 draw_pointers();
