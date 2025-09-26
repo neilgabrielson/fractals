@@ -26,10 +26,12 @@
                 <label>
                     Color Map:
                     <select id="cmap" onchange="update_cmap()">
-                        <option value="dark_red">Dark Red</option>
-                        <option value="aqua">Aqua</option>
+                        <option value="red">Red</option>
+                        <option value="tropical">Tropical</option>
                         <option value="viridis">Viridis</option>
                         <option value="flower">Flower</option>
+                        <option value="purple">Purple</option>
+                        <option value="halloween">Halloween</option>
                     </select>
                 </label>
                 <div class="fractal-container">
@@ -68,15 +70,15 @@
                         <button type="submit">Enter</button>
                 </form>
                 <br/>
-                <label>
+                <label style="display: flex; gap: 10px;">
                     Escape Iterations:
-                    <span id="esc_time_indicator">1000</span>
+                    <span style="width: 40px;" id="esc_time_indicator">1000</span>
                     <input type="range" id="esc_time_slider" min="10" max="5000" value="1000" step="10">
                 </label>
                 <br/>
-                <label>
+                <label style="display: flex; gap: 10px;">
                     Iteration Interval:
-                    <span id="play_speed_indicator">500</span>
+                    <span style="width: 40px;" id="play_speed_indicator">500</span>
                     <input type="range" id="play_speed_slider" min="10" max="1000" value="500" step="10">
                 </label>
                 <br/>

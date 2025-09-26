@@ -93,7 +93,7 @@ const fragmentShaderSource = `
         float esc_rad = get_escape_radius(u_fractal_type);
         float esc_rad_sq = esc_rad * esc_rad;
         
-        for (int n = 1; n < 1000; n++) {
+        for (int n = 1; n < 10000; n++) {
             if (n >= u_max_iterations) break;
             
             float norm_sq = abs(get_norm_sq(z, u_fractal_type));
@@ -105,7 +105,7 @@ const fragmentShaderSource = `
     }
 
     vec3 colormap(float value) {
-        float t = clamp(value / 100.0, 0.0, 1.0);
+        float t = clamp(value / float(u_max_iterations), 0.0, 1.0);
         return texture2D(u_colormap_texture, vec2(t, 0.5)).rgb;
     }
     
@@ -183,6 +183,7 @@ var z_value = [0,0];
 var c_value = [0,0];
 var current_fractal = 0;
 var max_iterations = 1000;
+var color_map_resolution = 1000;
 var current_colormap = 0;
 var c_locked = true;
 
@@ -300,50 +301,68 @@ function update_fractal_type() {
 }
 
 const cmap_functions = {
-    'dark_red': (value, max=100) => {
-        let i = 1.0 - Math.max(0, Math.min(1, value / max));
+    'red': (value) => {
+        let i = 1.0 - Math.max(0, Math.min(1, value / color_map_resolution));
+        return [
+            Math.round(Math.max(0, Math.sin(Math.PI * i)) * 100) + 155,
+            Math.round(Math.max(0, Math.sin(Math.PI * (i + 1/3))) * 255),
+            Math.round(Math.max(0, Math.sin(Math.PI * (i + 2/3))) * 255)
+        ];
+    },
+    'tropical': (value) => {
+        var i = Math.min(value / color_map_resolution, 1);
         return [
             Math.round(Math.max(0, Math.sin(Math.PI * i)) * 255),
             Math.round(Math.max(0, Math.sin(Math.PI * (i + 1/3))) * 255),
             Math.round(Math.max(0, Math.sin(Math.PI * (i + 2/3))) * 255)
         ];
     },
-    'aqua': (value, max=100) => {
-        var i = Math.min(value / max, 1);
-        return [
-            Math.round(Math.max(0, Math.sin(Math.PI * i)) * 255),
-            Math.round(Math.max(0, Math.sin(Math.PI * (i + 1/3))) * 255),
-            Math.round(Math.max(0, Math.sin(Math.PI * (i + 2/3))) * 255)
-        ];
-    },
-    'viridis': (value, max=100) => {
-        const i = Math.min(value / max, 1);
+    'viridis': (value) => {
+        const i = Math.min(value / color_map_resolution, 1);
         return [
             Math.round(Math.pow(Math.max(0, Math.sin(Math.PI * i / 2)), 1.5) * 255),
             Math.round(Math.pow(i, 0.5) * 255),
             Math.round(Math.max(0, Math.cos(Math.PI * i / 2)) * 255)
         ];
     },
-    'flower': (value, max=100) => {
-        var i = Math.min(value / max, 1);
+    'flower': (value) => {
+        var i = Math.min(value / color_map_resolution, 1);
         return [
             Math.round((0.9 - 0.3 * Math.pow(i, 2)) * 255),
             Math.round((0.6 + 0.4 * Math.max(0, Math.sin(Math.PI * i))) * 255),
             Math.round((0.8 + 0.2 * Math.max(0, Math.sin(Math.PI * i * 3))) * 255)
         ];
+    },
+    'purple': (value) => {
+        var i = Math.min(value / color_map_resolution, 1);
+        
+        return [
+            Math.round(Math.abs(Math.sin(Math.PI * i + 1/3) ** 2) * 255),
+            Math.round(Math.max(Math.sin(Math.PI * (i)) ** 8, 0) * 160),
+            Math.round(Math.abs(Math.sin(Math.PI * (i + 1/7)) ** 2) * 255)
+        ];
+    },
+    'halloween': (value) => {
+        var i = Math.min(value / color_map_resolution, 1);
+        
+        return [
+            Math.round(Math.abs(Math.sin(Math.PI * i + 1/3) ** 2) * 255),
+            Math.round(Math.max(Math.sin(Math.PI * (i)) ** 8, 0) * 100),
+            Math.round(Math.max(Math.sin(Math.PI * (i + 2/7)) ** 3, 0) * 255)
+        ];
     }
 }
 
 function update_colormap_texture(gl, texture, cmap_id) {
-    const textureData = new Uint8Array(256 * 3);
-    for (let i = 0; i < 256; i++) {
-        const [r, g, b] = cmap_functions[cmap_id](i, 100);
+    const textureData = new Uint8Array(color_map_resolution * 3);
+    for (let i = 0; i < color_map_resolution; i++) {
+        const [r, g, b] = cmap_functions[cmap_id](i);
         textureData[i * 3] = r;
         textureData[i * 3 + 1] = g;
         textureData[i * 3 + 2] = b;
     }
     gl.bindTexture(gl.TEXTURE_2D, texture);
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB, 256, 1, 0, gl.RGB, gl.UNSIGNED_BYTE, textureData);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB, color_map_resolution, 1, 0, gl.RGB, gl.UNSIGNED_BYTE, textureData);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
@@ -454,9 +473,17 @@ canvases.julia.addEventListener('click', (event) => {
     draw_pointers();
 });
 
+let animationFrameRequested = false;
+
 document.getElementById("esc_time_slider").addEventListener('input', function() {
     document.getElementById("esc_time_indicator").innerHTML = max_iterations = parseInt(this.value);
-    plot();
+    if (!animationFrameRequested) {
+        animationFrameRequested = true;
+        requestAnimationFrame(() => {
+            animationFrameRequested = false;
+            plot();
+        });
+    }
 });
 
 document.getElementById("play_speed_slider").addEventListener('input', function() {
@@ -505,8 +532,6 @@ canvases.julia.addEventListener('gestureend', (e) => {
 }, {passive: false});
 
 // Mouse move for unlocked mode
-let animationFrameRequested = false;
-
 canvases.mandelbrot.addEventListener('pointermove', (event) => {
     if (!c_locked) {
         latestMouseEvent = event;
@@ -525,8 +550,8 @@ canvases.mandelbrot.addEventListener('pointermove', (event) => {
 });
 
 // Initialize
-update_colormap_texture(gl_mandelbrot, colormapTexture_mandelbrot, 'dark_red');
-update_colormap_texture(gl_julia, colormapTexture_julia, 'dark_red');
+update_colormap_texture(gl_mandelbrot, colormapTexture_mandelbrot, 'red');
+update_colormap_texture(gl_julia, colormapTexture_julia, 'red');
 
 plot();
 draw_pointers();

@@ -33,10 +33,13 @@ This tool features side-by-side windows showing how the Mandelbrot set parameter
 - Automatic iteration with Play/Pause controls
 - Adjustable iteration speed (10-1000ms intervals)
 
-### Three Colormaps to Choose From:
-- **Dark Red**
-- **Aqua**
+### Six Colormaps to Choose From:
+- **Red**
+- **Tropical**
 - **Viridis**
+- **Flower**
+- **Purple**
+- **Halloween**
 
 ## Keyboard Shortcuts
 
