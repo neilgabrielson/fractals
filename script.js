@@ -34,7 +34,8 @@ const fractal_types = {
             2*z[0]*z[1] + c[1]
         ],
         norm_sq: z => z[0]**2 + z[1]**2,
-        esc_rad: 2
+        esc_rad: 2,
+        equation: 'f(z) = z<sup>2</sup> + c'
     },
     1: {
         fc: (z, c) => [
@@ -42,7 +43,8 @@ const fractal_types = {
             3*z[0]**2*z[1] - z[1]**3 + c[1]
         ],
         norm_sq: z => z[0]**2 + z[1]**2,
-        esc_rad: 2
+        esc_rad: 2,
+        equation: 'f(z) = z<sup>3</sup> + c'
     },
     2: {
         fc: (z, c) => [
@@ -50,7 +52,8 @@ const fractal_types = {
             4*z[0]**3*z[1] - 4*z[0]*z[1]**3 + c[1]
         ],
         norm_sq: z => z[0]**2 + z[1]**2,
-        esc_rad: 2
+        esc_rad: 2,
+        equation: 'f(z) = z<sup>4</sup> + c'
     },
     3: {
         fc: (z, c) => [
@@ -58,7 +61,8 @@ const fractal_types = {
             2*z[0]*z[1] - c[1]
         ],
         norm_sq: z => z[0]**2 - z[1]**2,
-        esc_rad: 10
+        esc_rad: 10,
+        equation: 'f(z) = (z)<sup>2</sup> + c (over the split-complex numbers)'
     },
     4: {
         fc: (z, c) => [
@@ -66,7 +70,8 @@ const fractal_types = {
             Math.abs(2*z[0]*z[1]) + c[1]
         ],
         norm_sq: z => z[0]**2 + z[1]**2,
-        esc_rad: 2
+        esc_rad: 2,
+        equation: 'f(z) = (|Re(z)|+i|Im(z)|)<sup>2</sup> + c'
     },
     5: {
         fc: (z, c) => [
@@ -74,7 +79,8 @@ const fractal_types = {
             -2*z[0]*z[1] + c[1]
         ],
         norm_sq: z => z[0]**2 - z[1]**2,
-        esc_rad: 2
+        esc_rad: 2,
+        equation: 'f(z) = (z<sup>*</sup>)<sup>2</sup> + c'
     }
 }
 
@@ -407,6 +413,7 @@ function reset() {
 
 function update_fractal_type() {
     current_fractal = parseInt(document.getElementById('fractal_type').value);
+    document.getElementById("fractal-equation").innerHTML = fractal_types[current_fractal].equation;
     plot();
 }
 
