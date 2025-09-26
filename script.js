@@ -252,7 +252,7 @@ var current_fractal = 0;
 var max_iterations = 100;
 var color_map_resolution = 1000;
 var current_colormap = 0;
-var c_locked = true;
+var c_locked = false;
 
 function renderFractal(gl, program, domain, isJulia) {
     gl.useProgram(program);
