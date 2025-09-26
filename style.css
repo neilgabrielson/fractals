@@ -18,11 +18,10 @@ body {
     display: inline-block;
 }
 
-#mandelbrot-overlay, #julia-overlay {
+#mandelbrot-overlay, #julia-overlay, #mandelbrot-cpu, #julia-cpu {
     position: absolute;
     top: 0;
     left: 0;
-    pointer-events: none; /* Let clicks pass through to main canvas */
 }
 
 .canvas-controls {

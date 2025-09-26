@@ -34,9 +34,14 @@
                         <option value="halloween">Halloween</option>
                     </select>
                 </label>
+                <label>
+                    Render Mode:
+                    <button id="cpu_toggle_btn" onclick="toggle_cpu_mode()">GPU</button>
+                </label>
                 <div class="fractal-container">
                     <div class="canvas-container">
                         <canvas id="mandelbrot" width="400" height="400"></canvas>
+                        <canvas id="mandelbrot-cpu" style="visibility: hidden" width="400" height="400"></canvas>
                         <canvas id="mandelbrot-overlay" width="400" height="400"></canvas>
                         <div class="canvas-controls">
                             <button onclick="scale_mandelbrot(0.5)">+</button>
@@ -48,6 +53,7 @@
                     </div>
                     <div class="canvas-container">
                         <canvas id="julia" width="400" height="400"></canvas>
+                        <canvas id="julia-cpu" style="visibility: hidden" width="400" height="400"></canvas>
                         <canvas id="julia-overlay" width="400" height="400"></canvas>
                         <div class="canvas-controls">
                             <button onclick="scale_julia(0.5)">+</button>
@@ -91,6 +97,7 @@
                     <li>[p] - play/pause iteration</li>
                     <li>[l] - toggle c lock</li>
                     <li>[r] - full reset</li>
+                    <li>[c] - toggle GPU/CPU mode</li>
                 </ul>
                 <h3>Links:</h3>
                 <ul>

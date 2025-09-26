@@ -2,8 +2,10 @@
 
 const canvases = {
     mandelbrot: document.getElementById('mandelbrot'),
+    mandelbrot_cpu: document.getElementById('mandelbrot-cpu'),
     mandelbrot_overlay: document.getElementById('mandelbrot-overlay'),
     julia: document.getElementById('julia'),
+    julia_cpu: document.getElementById('julia-cpu'),
     julia_overlay: document.getElementById('julia-overlay')
 };
 
@@ -14,8 +16,67 @@ const gl_mandelbrot = canvases.mandelbrot.getContext('webgl', { preserveDrawingB
 const gl_julia = canvases.julia.getContext('webgl', { preserveDrawingBuffer: true });
 
 // Colormap textures
-let colormapTexture_mandelbrot = gl_mandelbrot.createTexture();
-let colormapTexture_julia = gl_julia.createTexture();
+let colormap_texture_mandelbrot = gl_mandelbrot.createTexture();
+let colormap_texture_julia = gl_julia.createTexture();
+
+// Colormap for CPU
+var cmap = [];
+
+const value = (point, domain) => [
+    point[0] / resolution * (domain[0][1]-domain[0][0]) + domain[0][0],
+    (1 - point[1] / resolution) * (domain[1][1]-domain[1][0]) + domain[1][0]
+];
+
+const fractal_types = {
+    0: {
+        fc: (z, c) => [
+            z[0]**2 - z[1]**2 + c[0],
+            2*z[0]*z[1] + c[1]
+        ],
+        norm_sq: z => z[0]**2 + z[1]**2,
+        esc_rad: 2
+    },
+    1: {
+        fc: (z, c) => [
+            z[0]**2 + z[1]**2 + c[0],
+            2*z[0]*z[1] - c[1]
+        ],
+        norm_sq: z => z[0]**2 - z[1]**2,
+        esc_rad: 10
+    },
+    2: {
+        fc: (z, c) => [
+            z[0]**3 - 3*z[0]*z[1]**2 + c[0],
+            3*z[0]**2*z[1] - z[1]**3 + c[1]
+        ],
+        norm_sq: z => z[0]**2 + z[1]**2,
+        esc_rad: 2
+    },
+    3: {
+        fc: (z, c) => [
+            z[0]**4 - 6*z[0]**2*z[1]**2 + z[1]**4 + c[0],
+            4*z[0]**3*z[1] - 4*z[0]*z[1]**3 + c[1]
+        ],
+        norm_sq: z => z[0]**2 + z[1]**2,
+        esc_rad: 2
+    },
+    4: {
+        fc: (z, c) => [
+            z[0]**2 - z[1]**2 + c[0],
+            Math.abs(2*z[0]*z[1]) + c[1]
+        ],
+        norm_sq: z => z[0]**2 + z[1]**2,
+        esc_rad: 2
+    },
+    5: {
+        fc: (z, c) => [
+            z[0]**2 - z[1]**2 + c[0],
+            -2*z[0]*z[1] + c[1]
+        ],
+        norm_sq: z => z[0]**2 - z[1]**2,
+        esc_rad: 2
+    }
+}
 
 // Vertex shader (same for both)
 const vertexShaderSource = `
@@ -201,7 +262,7 @@ function renderFractal(gl, program, domain, isJulia) {
 
     // Colormap
     gl.activeTexture(gl.TEXTURE0);
-    const texture = isJulia ? colormapTexture_julia : colormapTexture_mandelbrot;
+    const texture = isJulia ? colormap_texture_julia : colormap_texture_mandelbrot;
     gl.bindTexture(gl.TEXTURE_2D, texture);
     gl.uniform1i(gl.getUniformLocation(program, 'u_colormap_texture'), 0);
     
@@ -210,12 +271,61 @@ function renderFractal(gl, program, domain, isJulia) {
     gl.drawArrays(gl.TRIANGLES, 0, 6);
 }
 
-function plot(fracs=["julia","mandelbrot"]) {
-    if (fracs.includes("mandelbrot")) {
-        renderFractal(gl_mandelbrot, program_mandelbrot, domains.mandelbrot, false);
+// plot function
+
+function escape_time(z, c) {
+    const {fc, norm_sq, esc_rad} = fractal_types[current_fractal];
+    for (let n = 1; n < max_iterations; n++) {
+        if (Math.abs(norm_sq(z)) >= esc_rad**2) return n;
+        else z = fc(z,c);
     }
-    if (fracs.includes("julia")) {
-        renderFractal(gl_julia, program_julia, domains.julia, true);
+    return 0;
+}
+
+let prefer_cpu = false;
+
+function is_cpu_mode() {
+    // can check if GPU is possible
+    // can check if zoom requires cpu
+    return prefer_cpu;
+}
+
+function plot(fracs=["julia","mandelbrot"]) {
+    if (is_cpu_mode()) {
+        for (i in fracs) {
+            const ctx = canvases[fracs[i] + "_cpu"].getContext("2d");
+            const imageData = ctx.createImageData(resolution, resolution);
+            for (let x = 0; x < resolution; x++) {
+                for (let y = 0; y < resolution; y++) {
+                    const iterations = fracs[i] == "julia"
+                        ? escape_time(
+                            value([x,y],domains["julia"]),
+                            c_value
+                        )
+                        : fracs[i] == "mandelbrot"
+                        ? escape_time(
+                            [0,0],
+                            value([x,y],domains["mandelbrot"])
+                        )
+                        : 0;
+                    const color_map_position = Math.round(iterations/max_iterations * color_map_resolution);
+                    const color = color_map_position === 0 ? [0,0,0] : cmap[color_map_position];
+                    const index = (y * resolution + x) * 4;
+                    imageData.data[index] = color[0];
+                    imageData.data[index + 1] = color[1];
+                    imageData.data[index + 2] = color[2];
+                    imageData.data[index + 3] = 255;
+                }
+            }
+            ctx.putImageData(imageData, 0, 0);
+        }
+    } else {
+        if (fracs.includes("mandelbrot")) {
+            renderFractal(gl_mandelbrot, program_mandelbrot, domains.mandelbrot, false);
+        }
+        if (fracs.includes("julia")) {
+            renderFractal(gl_julia, program_julia, domains.julia, true);
+        }
     }
 }
 
@@ -372,44 +482,38 @@ function update_colormap_texture(gl, texture, cmap_id) {
 
 function update_cmap() {
     const new_color = document.getElementById('cmap').value;
-    colormapTexture_mandelbrot = update_colormap_texture(gl_mandelbrot, colormapTexture_mandelbrot, new_color);
-    colormapTexture_julia = update_colormap_texture(gl_julia, colormapTexture_julia, new_color);
+    // for GPU
+    colormap_texture_mandelbrot = update_colormap_texture(gl_mandelbrot, colormap_texture_mandelbrot, new_color);
+    colormap_texture_julia = update_colormap_texture(gl_julia, colormap_texture_julia, new_color);
+    // for CPU
+    cmap = Array.from({length: color_map_resolution}, (_, i) => cmap_functions[new_color](i))
+    plot();
+}
+
+update_cmap();
+
+function toggle_cpu_mode() {
+    prefer_cpu = !prefer_cpu;
+
+    if (prefer_cpu) {
+        [canvases.mandelbrot, canvases.julia].forEach((canvas) => canvas.style.visibility = "hidden");
+        [canvases.mandelbrot_cpu, canvases.julia_cpu].forEach((canvas) => canvas.style.visibility = "visible");
+        document.getElementById("cpu_toggle_btn").innerHTML = "CPU";
+    } else {
+        [canvases.mandelbrot, canvases.julia].forEach((canvas) => canvas.style.visibility = "visible");
+        [canvases.mandelbrot_cpu, canvases.julia_cpu].forEach((canvas) => canvas.style.visibility = "hidden");
+        document.getElementById("cpu_toggle_btn").innerHTML = "GPU";
+    }
+
     plot();
 }
 
 function download_canvas(canvas_id) {
+    if (is_cpu_mode()) canvas_id = canvas_id + "_cpu";
     const link = document.createElement('a');
     link.download = `${canvas_id}.png`;
     link.href = canvases[canvas_id].toDataURL('image/png');
     link.click();
-}
-
-// Conversion function for complex coordinate to pixel
-const value = (point, domain) => [
-    point[0] / resolution * (domain[0][1]-domain[0][0]) + domain[0][0],
-    (1 - point[1] / resolution) * (domain[1][1]-domain[1][0]) + domain[1][0]
-];
-
-// Iteration functions
-const fractal_types = {
-    0: { // standard mandelbrot
-        fc: (z, c) => [z[0]**2 - z[1]**2 + c[0], 2*z[0]*z[1] + c[1]]
-    },
-    1: { // cubic
-        fc: (z, c) => [z[0]**3 - 3*z[0]*z[1]**2 + c[0], 3*z[0]**2*z[1] - z[1]**3 + c[1]]
-    },
-    2: { // quartic
-        fc: (z, c) => [z[0]**4 - 6*z[0]**2*z[1]**2 + z[1]**4 + c[0], 4*z[0]**3*z[1] - 4*z[0]*z[1]**3 + c[1]]
-    },
-    3: { // hyperbolic
-        fc: (z, c) => [z[0]**2 + z[1]**2 + c[0], 2*z[0]*z[1] - c[1]]
-    },
-    4: { // burning ship
-        fc: (z, c) => [z[0]**2 - z[1]**2 + c[0], Math.abs(2*z[0]*z[1]) + c[1]]
-    },
-    5: { // tricorn
-        fc: (z, c) => [z[0]**2 - z[1]**2 + c[0], -2*z[0]*z[1] + c[1]]
-    }
 }
 
 function iterate() {
@@ -457,17 +561,17 @@ function scale_julia(factor) {
 }
 
 // Event listeners
-canvases.mandelbrot.addEventListener('click', (event) => {
+canvases.mandelbrot_overlay.addEventListener('click', (event) => {
     if (!c_locked) toggle_c_lock();
-    const rect = canvases.mandelbrot.getBoundingClientRect();
+    const rect = canvases.mandelbrot_overlay.getBoundingClientRect();
     const point = [event.clientX - rect.left, event.clientY - rect.top];
     c_value = value(point, domains.mandelbrot);
     plot(["julia"]);
     draw_pointers();
 });
 
-canvases.julia.addEventListener('click', (event) => {
-    const rect = canvases.julia.getBoundingClientRect();
+canvases.julia_overlay.addEventListener('click', (event) => {
+    const rect = canvases.julia_overlay.getBoundingClientRect();
     const point = [event.clientX - rect.left, event.clientY - rect.top];
     z_value = value(point, domains.julia);
     draw_pointers();
@@ -513,6 +617,7 @@ const key_actions = {
     'i': iterate,
     'p': toggle_iteration,
     'l': toggle_c_lock,
+    'c': toggle_cpu_mode
 };
 
 document.addEventListener('keydown', (e) => {
@@ -521,34 +626,34 @@ document.addEventListener('keydown', (e) => {
 
 // Touch/gesture support
 ["gesturestart", "gesturechange"].forEach(evt =>
-    canvases.mandelbrot.addEventListener(evt, e => e.preventDefault(), {passive: false})
+    canvases.mandelbrot_overlay.addEventListener(evt, e => e.preventDefault(), {passive: false})
 );
 
-canvases.mandelbrot.addEventListener('gestureend', (e) => {
+canvases.mandelbrot_overlay.addEventListener('gestureend', (e) => {
     e.preventDefault();
     if(e.scale > 1.0) scale_mandelbrot(0.5);
     else if (e.scale < 1.0) scale_mandelbrot(2);
 }, {passive: false});
 
 ["gesturestart", "gesturechange"].forEach(evt =>
-    canvases.julia.addEventListener(evt, e => e.preventDefault(), {passive: false})
+    canvases.julia_overlay.addEventListener(evt, e => e.preventDefault(), {passive: false})
 );
 
-canvases.julia.addEventListener('gestureend', (e) => {
+canvases.julia_overlay.addEventListener('gestureend', (e) => {
     e.preventDefault();
     if(e.scale > 1.0) scale_julia(0.5);
     else if (e.scale < 1.0) scale_julia(2);
 }, {passive: false});
 
 // Mouse move for unlocked mode
-canvases.mandelbrot.addEventListener('pointermove', (event) => {
+canvases.mandelbrot_overlay.addEventListener('pointermove', (event) => {
     if (!c_locked) {
         latestMouseEvent = event;
         if (!animationFrameRequested) {
             animationFrameRequested = true;
             requestAnimationFrame(() => {
                 animationFrameRequested = false;
-                const rect = canvases.mandelbrot.getBoundingClientRect();
+                const rect = canvases.mandelbrot_overlay.getBoundingClientRect();
                 const point = [latestMouseEvent.clientX - rect.left, latestMouseEvent.clientY - rect.top];
                 c_value = value(point, domains.mandelbrot);
                 plot(["julia"]);
@@ -559,8 +664,8 @@ canvases.mandelbrot.addEventListener('pointermove', (event) => {
 });
 
 // Initialize
-update_colormap_texture(gl_mandelbrot, colormapTexture_mandelbrot, 'purple');
-update_colormap_texture(gl_julia, colormapTexture_julia, 'purple');
+update_colormap_texture(gl_mandelbrot, colormap_texture_mandelbrot, 'purple');
+update_colormap_texture(gl_julia, colormap_texture_julia, 'purple');
 
 plot();
 draw_pointers();
